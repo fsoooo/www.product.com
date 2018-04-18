@@ -51,11 +51,6 @@ class HgInsCurlController
     // 生产环境查询支付请求地址:
     const API_PAY_SEL_URL_PRODUCT = 'http://112.74.228.113/sinosoft-pay-web-gateway/scanPay/queryForPayResult';
 
-
-
-
-
-
     /**
      * 初始化
      *
@@ -64,13 +59,8 @@ class HgInsCurlController
     {
         $this->request = $request;
         $this->sign_help = new RsaSignHelp();
-<<<<<<< HEAD
-        $this->private_key = file_get_contents('../config/rsa_private_key.pem');
-        $this->public_key = file_get_contents('../config/rsa_public_key.pem');
-=======
         $this->private_key = file_get_contents('../config/rsa_private_key_1024_pkcs8.pem');
         $this->public_key = file_get_contents('../config/rsa_public_key_1024_pkcs8.pem');
->>>>>>> 5a8039171cc82b6ec71f574afb235be6e016de14
         $this->wk_public_key = file_get_contents('../config/wk_rsa_public_key.pem');
         if(!preg_match("/call_back/",$this->request->url())) {
             $this->original_data = $this->decodeOriginData();
