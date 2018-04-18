@@ -517,35 +517,13 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function downloadPolicy(){
-		$warranty_code = '';
+		$warranty_code = '123456789';
 		$request_url = self::API_INSURE_URL.'/outChannel/downloadPolicy.do?c='.self::API_CHANNEL_CODE.'&policyNo='.urlencode($warranty_code);
+		dump($request_url);
 	}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	//=============================================================续保接口(Renewal)===============================================================
+//	=============================================================续保接口(Renewal)===============================================================
 	/**
 	 * 续保保单查询
 	 * @access public
