@@ -151,7 +151,6 @@ class PaInsCurlController
 	 */
 	public function quote()
 	{
-		$request_url = '/outChannel/calculatePremium.do?c='.self::API_CHANNEL_CODE;
 		$input = [];
 		$input['productId'] = 'A000000042';
 		$input['applyDate'] = date('Y-m-d',time());
@@ -159,19 +158,20 @@ class PaInsCurlController
 		$input['premType'] = '1';
 		$input['insurants'][] = [
 			'seqno'=>'1',
-			'birthday'=>date('Y-m-d',time()-3600*24*365*18),
+			'birthday'=>'1994-06-05',
 			'sex'=>'M',//M男F女
 			'hasSocialSecurity'=>'Y',//是否有社保(Y/N)
 			'relationshipWithPrimaryInsurant'=>'1',//
 			'coverages'=>[
 				'0'=>[
-					'benLevel'=>'01',
-					'sumInsured'=>'400000',
+					'benLevel'=>'02',
+					'sumInsured'=>'1000000',
 					'period'=>'12',//保障期间（月），默认12
 					'periodDay'=>'0',//保障期间（天），默认为0
 				],
 			],
 		];
+//		dump($input);
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -179,7 +179,7 @@ class PaInsCurlController
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
 		//dump(json_encode($request_data));
-		$request_url = self::API_INSURE_URL.$request_url;
+		$request_url = self::API_INSURE_URL.'/outChannel/calculatePremium.do?c='.self::API_CHANNEL_CODE;
 		//dump($request_url);
 		$response = Curl::to($request_url)
 			->returnResponseObject()
@@ -225,8 +225,8 @@ class PaInsCurlController
 		$input = [];
 		$input['productId'] = 'A000000042';//产品编码
 		$input['applyDate'] = date('Y-m-d',time());
-		$input['effDate'] = date('Y-m-d',time());//保单生效日期
-		$input['totalPremium'] = '286.00';
+		$input['effDate'] = date('Y-m-d',strtotime('+1 day'));//保单生效日期
+		$input['totalPremium'] = '249.00';
 		$input['outChannelOrderId'] = '123456789';//渠道方订单号
 		//投保人信息
 		$input['applicant'] = [];
@@ -250,12 +250,13 @@ class PaInsCurlController
 		$input['insurants'][0]['contactInfo']['mobile'] = '15701681524';
 		$input['insurants'][0]['contactInfo']['email'] = 'wangsl@inschos.com';
 		$input['insurants'][0]['coverages'][0]['planType'] = '0';//险种类别（0主险/1附加险），默认为0
-		$input['insurants'][0]['coverages'][0]['sumInsured'] = '400000';//保额
-		$input['insurants'][0]['coverages'][0]['benLevel'] = '01';//档次
+		$input['insurants'][0]['coverages'][0]['sumInsured'] = '1000000';//保额
+		$input['insurants'][0]['coverages'][0]['benLevel'] = '02';//档次
 		$input['insurants'][0]['coverages'][0]['period'] = '12';//保险期间（月）
 		$input['insurants'][0]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][0]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][0]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
+		$input['insurants'][0]['coverages'][0]['actualPrem'] = '249.00';//实际保费，单位元，小数点后两位
 		$input['insurants'][0]['healthNotes'][0]['questionId'] = '1';//健康告知问题ID
 		$input['insurants'][0]['healthNotes'][0]['answer'] = 'Y';//答案值Y/N
 		$input['insurants'][0]['healthNotes'][0]['healthNoteSeq'] = '1';//告知批次号,1,2,3：如果接口方会记录且传给健康险历史告知记录，则该字段用于区分各批次健康告知，否则默认传值为
