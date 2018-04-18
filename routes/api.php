@@ -208,11 +208,15 @@ Route::any('ydth_encrypt', 'ApiControllers\Curls\YdthInsCurlController@index');
 Route::any('issue_tk', 'ApiControllers\Curls\TkInsCurlController@issue');
 
 //TODO  平安测试路由
-Route::any('test_pa_execl', 'ApiControllers\Curls\PaInsCurlController@testExcel');
-Route::any('pa_quote', 'ApiControllers\Curls\PaInsCurlController@quote');
-Route::any('pa_check_ins', 'ApiControllers\Curls\PaInsCurlController@checkIns');
-Route::any('pa_pay_ins', 'ApiControllers\Curls\PaInsCurlController@payIns');
-Route::any('pa_issue', 'ApiControllers\Curls\PaInsCurlController@issue');
+Route::any('pa_test_execl', 'ApiControllers\Curls\PaInsCurlController@testExcel');
+Route::any('pa_quote', 'ApiControllers\Curls\PaInsCurlController@quote');//保费试算
+Route::any('pa_check_ins', 'ApiControllers\Curls\PaInsCurlController@checkIns');//核保
+Route::any('pa_pay_ins', 'ApiControllers\Curls\PaInsCurlController@payIns');//收银台
+Route::any('pa_pay_call_back', 'ApiControllers\Curls\PaInsCurlController@payCallBack');//收银台
+Route::any('pa_issue', 'ApiControllers\Curls\PaInsCurlController@issue');//出单
+Route::any('pa_sel_policy', 'ApiControllers\Curls\PaInsCurlController@selPolicy');//保单查询
+Route::any('pa_cacel_policy', 'ApiControllers\Curls\PaInsCurlController@cacelPolicy');//撤件
+Route::any('pa_download_policy', 'ApiControllers\Curls\PaInsCurlController@downloadPolicy');//保单下载
 
 
 

@@ -270,9 +270,11 @@ class PaInsCurlController
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
 		$input = json_encode($input,JSON_UNESCAPED_UNICODE);
+		dump($input);
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
 		$request_url = self::API_INSURE_URL.'/outChannel/validate.do?c='.self::API_CHANNEL_CODE;;
+		dump($request_data);
 		$response = Curl::to($request_url)
 			->returnResponseObject()
 			->withData($request_data)
@@ -314,7 +316,7 @@ class PaInsCurlController
 		$input['channel_order_no'] = '1234567890';//健康险订单号
 		$input['goods_desc'] = '平安e家保';//商品描述
 		$input['total_fee'] = '10000';//支付金额 精确到分
-		$input['channel_id'] = self::API_CHANNEL_id;//渠道编码 固定值
+		$input['channel_id'] = self::API_CHANNEL_CODE;//渠道编码 固定值
 		$input['return_url'] = 'https://dev308.inschos.com/pay/result';//支付完成后，页面跳转地址
 		$input['notify_url'] = 'https://dev308.inschos.com/pay/notify';//支付完成后，后台异步通知支付结果
 		$input['goods_desc'] = urlencode($input['goods_desc']);
@@ -385,7 +387,6 @@ class PaInsCurlController
 	 */
 	public function issue()
 	{
-		$request_url = '/outChannel/accept.do?c='.self::API_CHANNEL_CODE;
 		$input = [];
 		$input['orderId'] = '111111111111111111111';//健康险订单号
 		$request_data = [];
@@ -393,12 +394,10 @@ class PaInsCurlController
 		$key = self::API_INSURE_URL_KEY;//测试环境
 		$input = json_encode($input);
 		dump($input);
-		$input = $this->aes_crypt->AesEncrypt($input,$key);
-//		$input = $this->aes_helper->aes($input,$key);
-//		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
 		dump(json_encode($request_data));
-		$request_url = self::API_INSURE_URL.$request_url;
+		$request_url = self::API_INSURE_URL.'/outChannel/accept.do?c='.self::API_CHANNEL_CODE;
 		//dump($request_url);
 		$response = Curl::to($request_url)
 			->returnResponseObject()
@@ -408,9 +407,7 @@ class PaInsCurlController
 			->withTimeout($this->retry_time)
 			->post();
 		dd($response);
-//		LogHelper::logError($request_data, 'pingan', 'quote_data');
-//		LogHelper::logError($response, 'pingan', 'quote_return');
-//		//失败返回
+		//失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
 		if($response->content->returnCode != 00){
@@ -431,7 +428,37 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function selPolicy(){
-
+		$input = [];
+		$input['policyNo'] = '111111111111111111111';//保单号
+		$request_data = [];
+		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
+		$key = self::API_INSURE_URL_KEY;//测试环境
+		$input = json_encode($input);
+		dump($input);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$request_data['data'] = $input;
+		dump(json_encode($request_data));
+		$request_url = self::API_INSURE_URL.'/outChannel/qryPolByPolNo.do?c='.self::API_CHANNEL_CODE;
+		//dump($request_url);
+		$response = Curl::to($request_url)
+			->returnResponseObject()
+			->withData($request_data)
+			->withHeader("Content-Type:application/json;charset=UTF-8,Accept:application/json;charset=UTF-8")
+			->asJson()
+			->withTimeout($this->retry_time)
+			->post();
+		dd($response);
+		//失败返回
+		if($response->status != 200)
+			return ['data'=> 'default quote error', 'code'=> 400];
+		if($response->content->returnCode != 00){
+			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
+			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
+		}
+		$data = array();
+		$data['price'] = $response->content->data->totalPrem;//算费价格
+		$data = json_encode($data, JSON_UNESCAPED_UNICODE);
+		return ['data'=>$data, 'code'=>200];
 	}
 
 	/**
@@ -443,7 +470,43 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function cacelPolicy(){
-
+		$input = [];
+		$input['policyNo'] = '111111111111111111111';//保单号
+		//退费方式，付款方式无需付款A: 渠道方退款，后继结算，下面的银行相关字段无需填
+		//银行批扣C: 健康险退款，后继结算，下面的银行相关字段必须填
+		$input['paymentMode'] = 'A';
+//		$input['bankAccountNo'] = '111111111111111111111';//退保银行账号
+//		$input['bankAccountName'] = '111111111111111111111';//开户人姓名
+//		$input['bankDescription'] = '111111111111111111111';//保单号
+		$request_data = [];
+		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
+		$key = self::API_INSURE_URL_KEY;//测试环境
+		$input = json_encode($input);
+		dump($input);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$request_data['data'] = $input;
+		dump(json_encode($request_data));
+		$request_url = self::API_INSURE_URL.'/outChannel/revokePolicy.do?c='.self::API_CHANNEL_CODE;
+		//dump($request_url);
+		$response = Curl::to($request_url)
+			->returnResponseObject()
+			->withData($request_data)
+			->withHeader("Content-Type:application/json;charset=UTF-8,Accept:application/json;charset=UTF-8")
+			->asJson()
+			->withTimeout($this->retry_time)
+			->post();
+		dd($response);
+		//失败返回
+		if($response->status != 200)
+			return ['data'=> 'default quote error', 'code'=> 400];
+		if($response->content->returnCode != 00){
+			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
+			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
+		}
+		$data = array();
+		$data['price'] = $response->content->data->totalPrem;//算费价格
+		$data = json_encode($data, JSON_UNESCAPED_UNICODE);
+		return ['data'=>$data, 'code'=>200];
 	}
 
 	/**
@@ -454,7 +517,8 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function downloadPolicy(){
-
+		$warranty_code = '';
+		$request_url = self::API_INSURE_URL.'/outChannel/downloadPolicy.do?c='.self::API_CHANNEL_CODE.'&policyNo='.urlencode($warranty_code);
 	}
 
 
