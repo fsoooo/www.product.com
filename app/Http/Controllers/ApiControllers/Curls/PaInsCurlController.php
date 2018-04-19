@@ -155,13 +155,13 @@ class PaInsCurlController
 		$input['productId'] = 'A000000042';
 		$input['applyDate'] = date('Y-m-d',time());
 		$input['isShareCoverage'] = 'N';
-		$input['premType'] = '1';
+		$input['premType'] = '5';//缴费频次
 		$input['insurants'][] = [
 			'seqno'=>'1',
 			'birthday'=>'1994-06-05',
 			'sex'=>'M',//M男F女
 			'hasSocialSecurity'=>'Y',//是否有社保(Y/N)
-			'relationshipWithPrimaryInsurant'=>'1',//
+			'relationshipWithPrimaryInsurant'=>'1',//与主被保人关系
 			'coverages'=>[
 				'0'=>[
 					'benLevel'=>'02',
@@ -171,7 +171,8 @@ class PaInsCurlController
 				],
 			],
 		];
-//		dump($input);
+
+		echo json_encode($input['insurants'][0]['coverages']).'-------';
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -188,7 +189,7 @@ class PaInsCurlController
 			->asJson()
 			->withTimeout($this->retry_time)
 			->post();
-//        dd($response);
+        //dump($response);
 		//失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
@@ -196,10 +197,11 @@ class PaInsCurlController
 			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
 			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
 		}
-		$data = array();
-		$data['price'] = $response->content->data->totalPrem;//算费价格
-		$data = json_encode($data, JSON_UNESCAPED_UNICODE);
-		return ['data'=>$data, 'code'=>200];
+		$data = $response->content->data;//获取算费密文
+		//$data = '240E5ADD76E8EA9F27296BD9F325E795F78A07D60183702EF505C89F04472280EB5F14CEDAFA17923DDBBB3B2744B4337D58C4D1C80808E2A6537FBD7EAFE73C219ECDF37807506275E4738A93A27B4E';
+		//TODO  解密
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -226,8 +228,8 @@ class PaInsCurlController
 		$input['productId'] = 'A000000042';//产品编码
 		$input['applyDate'] = date('Y-m-d',time());
 		$input['effDate'] = date('Y-m-d',strtotime('+1 day'));//保单生效日期
-		$input['totalPremium'] = '249.00';
-		$input['outChannelOrderId'] = '123456789';//渠道方订单号
+		$input['totalPremium'] = '234.00';
+		$input['outChannelOrderId'] = '123456789';//渠道方订单号,最大32位
 		//投保人信息
 		$input['applicant'] = [];
 		$input['applicant']['name'] = '王石磊';
@@ -235,11 +237,11 @@ class PaInsCurlController
 		$input['applicant']['idno'] = '410881199406056514';
 		$input['applicant']['birthday'] = '1994-06-05';
 		$input['applicant']['sex'] = 'M';
-		$input['applicant']['contactInfo']['mobile'] = '157016811524';
+		$input['applicant']['contactInfo']['mobile'] = '15701681524';
 		$input['applicant']['contactInfo']['email'] = 'wangsl@inschos.com';
 		//被保人信息列表
 		$input['insurants'] = [];
-		$input['insurants'][0]['seqno'] = '12345678901';
+		$input['insurants'][0]['seqno'] = '1';
 		$input['insurants'][0]['name'] = '王石磊';
 		$input['insurants'][0]['idType'] = '1';
 		$input['insurants'][0]['idno'] = '410881199406056514';
@@ -256,16 +258,16 @@ class PaInsCurlController
 		$input['insurants'][0]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][0]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][0]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][0]['coverages'][0]['actualPrem'] = '249.00';//实际保费，单位元，小数点后两位
+		$input['insurants'][0]['coverages'][0]['actualPrem'] = '234.00';//实际保费，单位元，小数点后两位
 		$input['insurants'][0]['healthNotes'][0]['questionId'] = '1';//健康告知问题ID
 		$input['insurants'][0]['healthNotes'][0]['answer'] = 'Y';//答案值Y/N
 		$input['insurants'][0]['healthNotes'][0]['healthNoteSeq'] = '1';//告知批次号,1,2,3：如果接口方会记录且传给健康险历史告知记录，则该字段用于区分各批次健康告知，否则默认传值为
 		//授权信息
 		$input['authInfo'] = [];
-		$input['authInfo']['initialChargeMode'] = '1';//首期收费方式
+		$input['authInfo']['initialChargeMode'] = '3';//首期收费方式
 		//服务约定信息
 		$input['serviceAgreementInfo'] = [];
-		$input['serviceAgreementInfo']['premType'] = '1';//缴费频次,1	趸缴2	月缴3	季缴4	半年缴5	年缴6	趸缴累加
+		$input['serviceAgreementInfo']['premType'] = '5';//缴费频次,1	趸缴2	月缴3	季缴4	半年缴5	年缴6	趸缴累加
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -274,7 +276,8 @@ class PaInsCurlController
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
 		$request_url = self::API_INSURE_URL.'/outChannel/validate.do?c='.self::API_CHANNEL_CODE;;
-		dump($request_data);
+		dump($request_url);
+		dump(json_encode($request_data));
 		$response = Curl::to($request_url)
 			->returnResponseObject()
 			->withData($request_data)
@@ -282,7 +285,7 @@ class PaInsCurlController
 			->asJson()
 			->withTimeout($this->retry_time)
 			->post();
-		dd($response);
+		dump($response);
 	    //失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
@@ -290,10 +293,9 @@ class PaInsCurlController
 			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
 			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
 		}
-		$data = array();
-		$data['price'] = $response->content->data->totalPrem;//算费价格
-		$data = json_encode($data, JSON_UNESCAPED_UNICODE);
-		return ['data'=>$data, 'code'=>200];
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -316,7 +318,8 @@ class PaInsCurlController
 		$input['channel_order_no'] = '1234567890';//健康险订单号
 		$input['goods_desc'] = '平安e家保';//商品描述
 		$input['total_fee'] = '10000';//支付金额 精确到分
-		$input['channel_id'] = self::API_CHANNEL_CODE;//渠道编码 固定值
+		$input['channel_id'] = self::API_CHANNEL_id;//渠道编码 固定值
+		$input['channel_id'] = '000102';//渠道编码 固定值
 		$input['return_url'] = 'https://dev308.inschos.com/pay/result';//支付完成后，页面跳转地址
 		$input['notify_url'] = 'https://dev308.inschos.com/pay/notify';//支付完成后，后台异步通知支付结果
 		$input['goods_desc'] = urlencode($input['goods_desc']);
@@ -339,6 +342,15 @@ class PaInsCurlController
 			'&total_fee='.$data['total_fee'];
 		dump($data);
 		dump($request_url);
+		$demo_url = 'https://mobile.health.pingan.com/ehis-hm/cashier/pay.do
+					?channel_order_no=PAH2000000216091
+					&goods_desc=e%E7%94%9F%E4%BF%9Dplus
+					&total_fee=24900&channel_id=000002
+					&return_url=https://health.pingan.com/cshi-internet/iaps/iapsResponse.action?PAH2000000216091
+					&notify_url=https://health.pingan.com/cshi-internet/iaps/IapsCallbackPay.action
+					&sign_type=SHA-256
+					&sign=c166d283c9ba30a8680bc46d6fc63c0ebbe8b1f59f2e9e1c5b5a595892093199';
+
 	}
 
 	/**
@@ -414,10 +426,9 @@ class PaInsCurlController
 			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
 			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
 		}
-		$data = array();
-		$data['price'] = $response->content->data->totalPrem;//算费价格
-		$data = json_encode($data, JSON_UNESCAPED_UNICODE);
-		return ['data'=>$data, 'code'=>200];
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -455,10 +466,9 @@ class PaInsCurlController
 			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
 			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
 		}
-		$data = array();
-		$data['price'] = $response->content->data->totalPrem;//算费价格
-		$data = json_encode($data, JSON_UNESCAPED_UNICODE);
-		return ['data'=>$data, 'code'=>200];
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -503,10 +513,9 @@ class PaInsCurlController
 			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
 			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
 		}
-		$data = array();
-		$data['price'] = $response->content->data->totalPrem;//算费价格
-		$data = json_encode($data, JSON_UNESCAPED_UNICODE);
-		return ['data'=>$data, 'code'=>200];
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -527,24 +536,88 @@ class PaInsCurlController
 
 	/**
 	 * 续保保单查询
+	 * 根据渠道代码查询续保保单列表，投保人信息，保单号，险种，满期日根据渠道代码查询续保保单列表，投保人信息，保单号，险种，满期日
 	 * @access public
 	 * @URL outChannel/renewal/queryByPolicyNo.do?c=渠道代码&requestId=请求编号(渠道_时间戳)
+	 * @params page	页数	int	Y
+	 * @params size	大小，最大5000	int	Y
+	 * @params polType	保单类型，用来区分保单类型G 为团单，P为个单	String	Y
 	 * @requstr_type POST
 	 * @return mixed
 	 */
 	public function selRenewalChannel(){
-
+		$input = [];
+		$input['page'] = '1';
+		$input['size'] = '100';
+		$input['polType'] = 'P';
+		$request_data = [];
+		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
+		$key = self::API_INSURE_URL_KEY;//测试环境
+		$input = json_encode($input,JSON_UNESCAPED_UNICODE);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$request_data['data'] = $input;
+		//dump(json_encode($request_data));
+		$request_url = self::API_INSURE_URL.'/outChannel/calculatePremium.do?c='.self::API_CHANNEL_CODE.'&requestId='.self::API_CHANNEL_CODE.time();
+		dump($request_url);
+		$response = Curl::to($request_url)
+			->returnResponseObject()
+			->withData($request_data)
+			->withHeader("Content-Type:application/json;charset=UTF-8,Accept:application/json;charset=UTF-8")
+			->asJson()
+			->withTimeout($this->retry_time)
+			->post();
+		dump($response);die;
+		//失败返回
+		if($response->status != 200)
+			return ['data'=> 'default quote error', 'code'=> 400];
+		if($response->content->returnCode != 00){
+			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
+			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
+		}
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
 	 * 续保渠道查询
 	 * @access public
 	 * @URL outChannel/renewal/queryByChannel.do?c=渠道代码&requestId=请求编号(渠道_时间戳)
+	 * @params policyNo	保单号	String		Y
 	 * @requstr_type POST
 	 * @return mixed
 	 */
 	public function selRenewalPolicy(){
-
+		$input = [];
+		$input['policyNo'] = '111111111111111111111';//健康险订单号
+		$request_data = [];
+		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
+		$key = self::API_INSURE_URL_KEY;//测试环境
+		$input = json_encode($input);
+		dump($input);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$request_data['data'] = $input;
+		dump(json_encode($request_data));
+		$request_url = self::API_INSURE_URL.'outChannel/renewal/queryByChannel.do?c='.self::API_CHANNEL_CODE.'&requestId='.self::API_CHANNEL_CODE.time();;
+		//dump($request_url);
+		$response = Curl::to($request_url)
+			->returnResponseObject()
+			->withData($request_data)
+			->withHeader("Content-Type:application/json;charset=UTF-8,Accept:application/json;charset=UTF-8")
+			->asJson()
+			->withTimeout($this->retry_time)
+			->post();
+		dd($response);
+		//失败返回
+		if($response->status != 200)
+			return ['data'=> 'default quote error', 'code'=> 400];
+		if($response->content->returnCode != 00){
+			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
+			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
+		}
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**

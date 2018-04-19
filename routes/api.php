@@ -217,6 +217,16 @@ Route::any('pa_issue', 'ApiControllers\Curls\PaInsCurlController@issue');//出�
 Route::any('pa_sel_policy', 'ApiControllers\Curls\PaInsCurlController@selPolicy');//保单查询
 Route::any('pa_cacel_policy', 'ApiControllers\Curls\PaInsCurlController@cacelPolicy');//撤件
 Route::any('pa_download_policy', 'ApiControllers\Curls\PaInsCurlController@downloadPolicy');//保单下载
+//TODO 平安续保接口
+Route::any('pa_sel_renewal_channel', 'ApiControllers\Curls\PaInsCurlController@selRenewalChannel');//续保渠道查询
+Route::any('pa_sel_renewal_policy', 'ApiControllers\Curls\PaInsCurlController@selRenewalPolicy');//续保保单查询
+Route::any('pa_quote_renewal', 'ApiControllers\Curls\PaInsCurlController@quoteRenewal');//续保保费试算
+Route::any('pa_issue_renewal', 'ApiControllers\Curls\PaInsCurlController@issueRenewal');//续保出单
+Route::any('pa_confirm_renewal', 'ApiControllers\Curls\PaInsCurlController@confirmRenewal');//续保确认
+Route::any('pa_sel_electronic_invoice', 'ApiControllers\Curls\PaInsCurlController@selElectronicInvoice');//电子发票查询
+
+
+
 
 
 

@@ -48,7 +48,8 @@ class AesCryptHelper
 		$decoded = $this->hex2bin($decrypt);
 		$blockSize = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_ECB);
 		$iv = mcrypt_create_iv($blockSize, MCRYPT_RAND);
-		$decrypted = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $key, $decoded, MCRYPT_MODE_ECB, $iv);
+		$key2 = substr(openssl_digest(openssl_digest($key, 'sha1', true), 'sha1', true), 0, 16);
+		$decrypted = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $key2, $decoded, MCRYPT_MODE_ECB, $iv);
 		return $this->_pkcs5Unpad($decrypted);
 	}
 
