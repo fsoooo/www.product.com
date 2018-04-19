@@ -163,8 +163,8 @@ class PaInsCurlController
 			'relationshipWithPrimaryInsurant'=>'1',//与主被保人关系
 			'coverages'=>[
 				'0'=>[
-					'benLevel'=>'02',
-					'sumInsured'=>'1000000',
+					'benLevel'=>'01',
+					'sumInsured'=>'400000',
 					'period'=>'12',//保障期间（月），默认12
 					'periodDay'=>'0',//保障期间（天），默认为0
 				],
@@ -227,7 +227,7 @@ class PaInsCurlController
 		$input['productId'] = 'A000000042';//产品编码
 		$input['applyDate'] = date('Y-m-d',time());
 		$input['effDate'] = date('Y-m-d',strtotime('+1 day'));//保单生效日期
-		$input['totalPremium'] = '234.00';
+		$input['totalPremium'] = '210.00';
 		$input['outChannelOrderId'] = '123456789';//渠道方订单号,最大32位
 		//投保人信息
 		$input['applicant'] = [];
@@ -253,13 +253,13 @@ class PaInsCurlController
 		$input['insurants'][0]['contactInfo']['mobile'] = '15701681524';
 		$input['insurants'][0]['contactInfo']['email'] = 'wangsl@inschos.com';
 		$input['insurants'][0]['coverages'][0]['planType'] = '0';//险种类别（0主险/1附加险），默认为0
-		$input['insurants'][0]['coverages'][0]['sumInsured'] = '1000000';//保额
-		$input['insurants'][0]['coverages'][0]['benLevel'] = '02';//档次
+		$input['insurants'][0]['coverages'][0]['sumInsured'] = '400000';//保额
+		$input['insurants'][0]['coverages'][0]['benLevel'] = '01';//档次
 		$input['insurants'][0]['coverages'][0]['period'] = '12';//保险期间（月）
 		$input['insurants'][0]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][0]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][0]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][0]['coverages'][0]['actualPrem'] = '234.00';//实际保费，单位元，小数点后两位
+		$input['insurants'][0]['coverages'][0]['actualPrem'] = '210.00';//实际保费，单位元，小数点后两位
 		$input['insurants'][0]['healthNotes'][0]['questionId'] = 'P00500001';//健康告知问题ID
 		$input['insurants'][0]['healthNotes'][0]['answer'] = 'Y';//答案值Y/N
 		$input['insurants'][0]['healthNotes'][0]['healthNoteSeq'] = '1';//告知批次号,1,2,3：如果接口方会记录且传给健康险历史告知记录，则该字段用于区分各批次健康告知，否则默认传值为
@@ -317,9 +317,9 @@ class PaInsCurlController
 	 */
 	public function payIns(){
 		$input = [];
-		$input['channel_order_no'] = '99000000042842841';//健康险订单号
+		$input['channel_order_no'] = '99000000042843075';//健康险订单号
 		$input['goods_desc'] = '平安e家保';//商品描述
-		$input['total_fee'] = '23400';//支付金额 精确到分
+		$input['total_fee'] = '21000';//支付金额 精确到分
 		$input['channel_id'] = self::API_CHANNEL_id;//渠道编码 固定值
 		$input['channel_id'] = '000102';//渠道编码 固定值
 		$input['return_url'] = 'https://n183967a96.iask.in:49292/api/pa_pay_result';//支付完成后，页面跳转地址
@@ -413,7 +413,7 @@ class PaInsCurlController
 	public function issue()
 	{
 		$input = [];
-		$input['orderId'] = '99000000042842841';//健康险订单号
+		$input['orderId'] = '99000000042843075';//健康险订单号
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -453,7 +453,7 @@ class PaInsCurlController
 	 */
 	public function selPolicy(){
 		$input = [];
-		$input['policyNo'] = '9200200050348380';//保单号
+		$input['policyNo'] = '9200200050348661';//保单号
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -494,7 +494,7 @@ class PaInsCurlController
 	 */
 	public function cacelPolicy(){
 		$input = [];
-		$input['policyNo'] = '9200200050348380';//保单号
+		$input['policyNo'] = '9200200050348661';//保单号
 		//退费方式，付款方式无需付款A: 渠道方退款，后继结算，下面的银行相关字段无需填
 		//银行批扣C: 健康险退款，后继结算，下面的银行相关字段必须填
 		$input['paymentMode'] = 'C';
@@ -542,7 +542,7 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function downloadPolicy(){
-		$warranty_code = urlencode('9200200050348380');
+		$warranty_code = urlencode('9200200050348661');
 		$request_url = self::API_INSURE_URL.'/outChannel/downloadPolicy.do?c='.self::API_CHANNEL_CODE.'&policyNo='.$warranty_code;
 		dump($request_url);
 	}
