@@ -554,7 +554,7 @@ class PaInsCurlController
 //	=============================================================续保接口(Renewal)===============================================================
 
 	/**
-	 * 续保保单查询
+	 * 续保渠道查询
 	 * 根据渠道代码查询续保保单列表，投保人信息，保单号，险种，满期日根据渠道代码查询续保保单列表，投保人信息，保单号，险种，满期日
 	 * @access public
 	 * @URL outChannel/renewal/queryByPolicyNo.do?c=渠道代码&requestId=请求编号(渠道_时间戳)
@@ -599,7 +599,7 @@ class PaInsCurlController
 	}
 
 	/**
-	 * 续保渠道查询
+	 * 续保保单查询
 	 * @access public
 	 * @URL outChannel/renewal/queryByChannel.do?c=渠道代码&requestId=请求编号(渠道_时间戳)
 	 * @params policyNo	保单号	String		Y
@@ -608,7 +608,7 @@ class PaInsCurlController
 	 */
 	public function selRenewalPolicy(){
 		$input = [];
-		$input['policyNo'] = '111111111111111111111';//健康险订单号
+		$input['policyNo'] = '9200200050348936';//保单号	String		Y
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -647,7 +647,42 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function quoteRenewal(){
-
+		$input = [];
+		$input['policyNo'] = '9200200050348936';//policyNo	保单号	String	Y
+		$input['renewalNo'] = '9200200050348936';//续保保单号	String	Y
+		$input['benLevel'] = '01';//计划	String	Y
+		$input['sumInsured'] = '400000';//保额	String	Y
+		$input['isChange'] = 'Y';//是否转保(Y为是，N为否)	String	Y
+		$input['productId'] = 'A000000042';//转保后产品ID（是否转保为Y时才传）	String	N
+		$input['socialSecurity'] = 'N';//是否有社保 Y/N，默认为N	String	N
+		$request_data = [];
+		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
+		$key = self::API_INSURE_URL_KEY;//测试环境
+		$input = json_encode($input);
+		dump($input);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$request_data['data'] = $input;
+		dump(json_encode($request_data));
+		$request_url = self::API_INSURE_URL.'outChannel/renewal/calc.do?c='.self::API_CHANNEL_CODE.'&requestId='.self::API_CHANNEL_CODE.time();;
+		//dump($request_url);
+		$response = Curl::to($request_url)
+			->returnResponseObject()
+			->withData($request_data)
+			->withHeader("Content-Type:application/json;charset=UTF-8,Accept:application/json;charset=UTF-8")
+			->asJson()
+			->withTimeout($this->retry_time)
+			->post();
+		dd($response);
+		//失败返回
+		if($response->status != 200)
+			return ['data'=> 'default quote error', 'code'=> 400];
+		if($response->content->returnCode != 00){
+			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
+			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
+		}
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -658,7 +693,50 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function issueRenewal(){
-
+		$input = [];
+		$input['policyNo'] = '9200200050348936';//policyNo	保单号	String	Y
+		$input['outChannelOrderId'] = '9200200050348936';//外部渠道订单号	String	Y
+		$input['benLevel'] = '01';//计划	String	Y
+		$input['sumInsured'] = '400000';//保额	String	Y
+		$input['isChange'] = 'Y';//是否转保(Y为是，N为否)	String	Y
+		$input['productId'] = 'A000000042';//转保后产品ID（是否转保为Y时才传）	String	N
+		$input['socialSecurity'] = 'N';//是否有社保 Y/N，默认为N	String	N
+		$input['uwMedicalId'] = '9200200050348936';//核保号	String	N
+		$input['renewalNo'] = '9200200050348936';//续保保单号	String	Y
+		$input['nextTotPrem'] = '241.00';//续保保费，单位，元，两位小数	String	Y
+		$input['healthNotes'] = [];//是否有社保 Y/N，默认为N	String	N
+		$input['healthNotes'][0]['answer'] = '';//答案值Y/N	String	Y
+		$input['healthNotes'][0]['questionId'] = '';//问题ID：参考”险种相关”健康告知ID	String	N
+		$input['healthNotes'][0]['description'] = '';//描述	String	Y
+		$input['healthNotes'][0]['healthNoteSeq'] = '';//告知批次号,1,2,3：如果接口方会记录且传给健康险历史告知记录则该字段，用于区分各批次健康告知，否则默认传值为1
+		$request_data = [];
+		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
+		$key = self::API_INSURE_URL_KEY;//测试环境
+		$input = json_encode($input);
+		dump($input);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$request_data['data'] = $input;
+		dump(json_encode($request_data));
+		$request_url = self::API_INSURE_URL.'outChannel/renewal/create.do?c='.self::API_CHANNEL_CODE.'&requestId='.self::API_CHANNEL_CODE.time();;
+		//dump($request_url);
+		$response = Curl::to($request_url)
+			->returnResponseObject()
+			->withData($request_data)
+			->withHeader("Content-Type:application/json;charset=UTF-8,Accept:application/json;charset=UTF-8")
+			->asJson()
+			->withTimeout($this->retry_time)
+			->post();
+		dd($response);
+		//失败返回
+		if($response->status != 200)
+			return ['data'=> 'default quote error', 'code'=> 400];
+		if($response->content->returnCode != 00){
+			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
+			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
+		}
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -669,7 +747,36 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function confirmRenewal(){
-
+		$input = [];
+		$input['orderId'] = '9200200050348936';//健康险订单号	String	Y
+		$request_data = [];
+		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
+		$key = self::API_INSURE_URL_KEY;//测试环境
+		$input = json_encode($input);
+		dump($input);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$request_data['data'] = $input;
+		dump(json_encode($request_data));
+		$request_url = self::API_INSURE_URL.'outChannel/renewal/confirm.do?c='.self::API_CHANNEL_CODE.'&requestId='.self::API_CHANNEL_CODE.time();;
+		//dump($request_url);
+		$response = Curl::to($request_url)
+			->returnResponseObject()
+			->withData($request_data)
+			->withHeader("Content-Type:application/json;charset=UTF-8,Accept:application/json;charset=UTF-8")
+			->asJson()
+			->withTimeout($this->retry_time)
+			->post();
+		dd($response);
+		//失败返回
+		if($response->status != 200)
+			return ['data'=> 'default quote error', 'code'=> 400];
+		if($response->content->returnCode != 00){
+			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
+			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
+		}
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -680,7 +787,37 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function selElectronicInvoice(){
-
+		$input = [];
+		$input['phone'] = '15701681524';//	phone	手机号码	String	是
+		$input['policyNo'] = '9200200050348936';//保单号	String	是
+		$request_data = [];
+		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
+		$key = self::API_INSURE_URL_KEY;//测试环境
+		$input = json_encode($input);
+		dump($input);
+		$input = $this->aes_crypt_helper->encrypt($input,$key);
+		$request_data['data'] = $input;
+		dump(json_encode($request_data));
+		$request_url = self::API_INSURE_URL.'outChannel/renewal/qryInvoice.do?c='.self::API_CHANNEL_CODE.'&requestId='.self::API_CHANNEL_CODE.time();;
+		//dump($request_url);
+		$response = Curl::to($request_url)
+			->returnResponseObject()
+			->withData($request_data)
+			->withHeader("Content-Type:application/json;charset=UTF-8,Accept:application/json;charset=UTF-8")
+			->asJson()
+			->withTimeout($this->retry_time)
+			->post();
+		dd($response);
+		//失败返回
+		if($response->status != 200)
+			return ['data'=> 'default quote error', 'code'=> 400];
+		if($response->content->returnCode != 00){
+			LogHelper::logError($request_data, json_encode($response->content, JSON_UNESCAPED_UNICODE), 'pingan', 'insAttr');
+			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
+		}
+		$data = $response->content->data;//获取密文
+		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 //    ==============================================================公共方法==========================================================
