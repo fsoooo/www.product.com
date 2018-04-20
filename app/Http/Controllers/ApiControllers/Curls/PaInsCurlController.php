@@ -163,8 +163,8 @@ class PaInsCurlController
 			'relationshipWithPrimaryInsurant'=>'1',//与主被保人关系
 			'coverages'=>[
 				'0'=>[
-					'benLevel'=>'01',
-					'sumInsured'=>'400000',
+					'benLevel'=>'04',
+					'sumInsured'=>'6000000',
 					'period'=>'12',//保障期间（月），默认12
 					'periodDay'=>'0',//保障期间（天），默认为0
 				],
