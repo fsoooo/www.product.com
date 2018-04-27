@@ -47,6 +47,11 @@ return [
         '护照'=>'2',
         '军官证'=>'3',
         '其他'=>'4',
+        '少儿证'=>'5',
+        '港澳台回乡证'=>'6',
+        '出生证'=>'7',
+        '驾驶证'=>'8',
+        '户口本'=>'9',
         '组织机构代码'=>'11',
         '工商注册号码'=>'12',
         '税务登记证'=>'13',
@@ -123,6 +128,10 @@ return [
             '国籍'=>'ty_beibaoren_native',
             '年收入'=>'ty_beibaoren_income',
             '健康告知'=>'ty_beibaoren_health',
+            '有无社保'=>'social_insurance',
+            '社保所在地'=>'social_location',
+            '与投保人关系'=>'relation_to_toubaoren',
+            '与第一被保险人关系'=>'relation_to_first_beibaoren',
         ],
         //受益人信息
         'ty_shouyiren'=>[

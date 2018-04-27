@@ -210,7 +210,8 @@ Route::any('issue_tk', 'ApiControllers\Curls\TkInsCurlController@issue');
 //TODO  平安测试路由
 Route::any('pa_test_execl', 'ApiControllers\Curls\PaInsCurlController@testExcel');
 Route::any('pa_quote', 'ApiControllers\Curls\PaInsCurlController@quote');//保费试算
-Route::any('pa_check_ins', 'ApiControllers\Curls\PaInsCurlController@checkIns');//核保
+Route::any('pa_check_p_ins', 'ApiControllers\Curls\PaInsCurlController@checkPersonalIns');//个险核保
+Route::any('pa_check_c_ins', 'ApiControllers\Curls\PaInsCurlController@checkCorporateIns');//团险核保
 Route::any('pa_pay_ins', 'ApiControllers\Curls\PaInsCurlController@payIns');//收银台
 Route::any('pa_pay_result', 'ApiControllers\Curls\PaInsCurlController@payResult');//收银台支付完成跳转地址
 Route::any('pa_pay_call_back', 'ApiControllers\Curls\PaInsCurlController@payCallBack');//收银台支付完成后，后台异步通知支付结果
