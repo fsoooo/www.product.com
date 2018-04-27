@@ -102,6 +102,77 @@ class PaInsCurlController
 		$this->private_key = file_get_contents('../config/rsa_private_key_1024_pkcs8.pem');
 		$this->public_key = file_get_contents('../config/rsa_public_key_1024_pkcs8.pem');
 		$this->wk_public_key = file_get_contents('../config/wk_rsa_public_key.pem');
+		if(!preg_match("/call_back/",$this->request->url())) {
+			$this->original_data = $this->decodeOriginData();
+			//业务参数 解析出源数据json字符串
+			$repository = new InsuranceApiFromRepository();
+			//天眼产品ID
+			$insurance_id = isset($this->original_data['ty_product_id']) ? $this->original_data['ty_product_id'] : 0;
+			//内部产品唯一码
+			$private_p_code = isset($this->original_data['private_p_code']) ? $this->original_data['private_p_code'] : 0;
+			if ($insurance_id) {
+				$this->bind = $repository->getApiStatusOn($insurance_id);    //获取当前正在启用的API来源信息
+			} else {
+				$this->bind = $repository->getApiByPrivatePCode($private_p_code);   //通过内部产品唯一码获得相关信息
+			}
+			if (empty($this->bind)) {
+				return ['data' => 'product not exist', 'code' => 400];
+			}
+		}
+	}
+
+	/**
+	 * 产品详情
+	 *
+	 */
+	public function getApiOption()
+	{
+		$insuranceAttributesRepository = new InsuranceAttributesRepository();
+		$restrictGeneRepository = new RestrictGeneRepository();
+		$input = $this->original_data;
+		$insurance_id = $input['ty_product_id'];
+		$result['ty_product_id'] = $insurance_id;
+		$result['private_p_code'] = $this->bind ->private_p_code;
+		$result['bind_id'] = $this->bind ->id;
+		//投保属性
+		$insurance_attributes = $insuranceAttributesRepository->findAttributesRecursionByBindId($this->bind ->id);
+		foreach ($insurance_attributes as &$insurance_attribute) {
+			if (isset($insurance_attribute['productAttributes'])) {
+				foreach ($insurance_attribute['productAttributes'] as &$insurance_attribute) {
+					if (isset($insurance_attribute['attributeValues'])) {
+						foreach ($insurance_attribute['attributeValues'] as &$value) {
+							unset($value['controlValue']);
+						}
+					}
+					unset($insurance_attribute['apiName']);
+				}
+			}
+		}
+		$result['option']['insurance_attributes'] = $insurance_attributes;
+		//试算因子对应选项
+		$restrict_genes = $restrictGeneRepository->findRestrictGenesRecursionByBindId($this->bind ->id);
+		$result['option']['restrict_genes'] = $this->onlyTyKey($restrict_genes);
+		//获得默认试算选项
+		$result['option']['selected_options'] = $restrictGeneRepository->findDefaultRestrictGenes($this->bind ->id);
+		$result['option']['selected_options'] = $this->onlyTyKey($result['option']['selected_options']);
+		$result['option']['area'] = json_decode(config('hg_msg.area'),true);//地区信息
+		$result['option']['jobs'] = json_decode(config('hg_msg.job'),true);//职业信息
+		$result['option']['bank'] = config('hg_msg.bank');//银行信息
+		$result['option']['pay_code'] = config('hg_msg.pay_code');//支付状态码
+		//todo   保障权益，还没获取，算费价格待定
+//        $default_quote = $this->formatQuote($result['option']['selected_options']);
+//        dd($default_quote);
+//        //获得默认保费及保障内容
+//        $result['option']['price'] = $default_quote->price;
+		$min_tariff= DB::table('hg_tariff')->min('tariff');
+		$min_tariff = 6.2;
+//        $results = DB::table('hg_tariff')->orderBy('tariff')->get();
+//        $min_tariff = $results->tariff;
+		$result['option']['price'] = $min_tariff*10000;//单位为分
+//        //保障内容
+//        $result['option']['protect_items'] = $default_quote->protect_items;
+		$result['option']['protect_items'] = '';
+		return ['data'=> $result, 'code'=> 200];
 	}
 
 	/**
@@ -185,17 +256,17 @@ class PaInsCurlController
 				],
 			],
 		];
-		echo json_encode($input['insurants'][0]['coverages']).'-------';
+		//echo json_encode($input['insurants'][0]['coverages']).'-------';
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
 		$input = json_encode($input,JSON_UNESCAPED_UNICODE);
-		dump($input);
+		//dump($input);
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
-		dump(json_encode($request_data));
+		//dump(json_encode($request_data));
 		$request_url = self::API_INSURE_URL.'/outChannel/calculatePremium.do?c='.self::API_CHANNEL_CODE;
-		dump($request_url);
+		//dump($request_url);
 		$response = Curl::to($request_url)
 			->returnResponseObject()
 			->withData($request_data)
@@ -204,7 +275,7 @@ class PaInsCurlController
 			->withTimeout($this->retry_time)
 			->post();
 		$responses = json_encode($response, JSON_FORCE_OBJECT);
-        print_r($responses);
+        //print_r($responses);
 		//失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
@@ -216,8 +287,12 @@ class PaInsCurlController
 		//$data = '240E5ADD76E8EA9F27296BD9F325E795F78A07D60183702EF505C89F04472280EB5F14CEDAFA17923DDBBB3B2744B4337D58C4D1C80808E2A6537FBD7EAFE73C219ECDF37807506275E4738A93A27B4E';
 		//TODO  解密
 		$data = $this->aes_crypt_helper->decrypt($data, $key);
-		dd($data);
-		return ['data'=>json_decode($data,true), 'code'=>200];
+		//dd($data);
+		$msg['data']['price'] = json_decode($data,true)['totalPrem'];
+		$msg['data']['selected_options'] = '';
+		$msg['code'] = 200;
+		return $msg;
+		//return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
 	/**
@@ -320,7 +395,7 @@ class PaInsCurlController
 		}
 		$data = $response->content->data;//获取密文
 		$data = $this->aes_crypt_helper->decrypt($data, $key);
-		dd($data);
+		print_r($data);die;
 		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
@@ -435,7 +510,7 @@ class PaInsCurlController
 		}
 		$data = $response->content->data;//获取密文
 		$data = $this->aes_crypt_helper->decrypt($data, $key);
-		dd($data);
+		print_r($data);die;
 		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
@@ -456,9 +531,9 @@ class PaInsCurlController
 	 */
 	public function payIns(){
 		$input = [];
-		$input['channel_order_no'] = '99000000042843124';//健康险订单号
+		$input['channel_order_no'] = '99000000042844502';//健康险订单号
 		$input['goods_desc'] = '平安e家保';//商品描述
-		$input['total_fee'] = '27100';//支付金额 精确到分
+		$input['total_fee'] = '21000';//支付金额 精确到分
 		$input['channel_id'] = self::API_CHANNEL_id;//渠道编码 固定值
 		$input['channel_id'] = '000102';//渠道编码 固定值
 		$input['return_url'] = 'https://n183967a96.iask.in:49292/api/pa_pay_result';//支付完成后，页面跳转地址
@@ -552,17 +627,17 @@ class PaInsCurlController
 	public function issue()
 	{
 		$input = [];
-		$input['orderId'] = '99000000042843124';//健康险订单号
+		$input['orderId'] = '99000000042844502';//健康险订单号
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
 		$input = json_encode($input);
-		//dump($input);
+		dump($input);
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
-		//dump(json_encode($request_data));
+		dump(json_encode($request_data));
 		$request_url = self::API_INSURE_URL.'/outChannel/accept.do?c='.self::API_CHANNEL_CODE;
-		//dump($request_url);
+		dump($request_url);
 		$response = Curl::to($request_url)
 			->returnResponseObject()
 			->withData($request_data)
@@ -570,7 +645,9 @@ class PaInsCurlController
 			->asJson()
 			->withTimeout($this->retry_time)
 			->post();
-		//dd($response);
+//		dd($response);
+		$responses = json_encode($response, JSON_FORCE_OBJECT);
+		print_r($responses);
 		//失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
@@ -580,6 +657,7 @@ class PaInsCurlController
 		}
 		$data = $response->content->data;//获取密文
 		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		dd($data);
 		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
@@ -593,17 +671,17 @@ class PaInsCurlController
 	 */
 	public function selPolicy(){
 		$input = [];
-		$input['policyNo'] = '9200200050348974';//保单号
+		$input['policyNo'] = '9200200050350351';//保单号
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
 		$input = json_encode($input);
-		//dump($input);
+		dump($input);
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
-		//dump(json_encode($request_data));
+		dump(json_encode($request_data));
 		$request_url = self::API_INSURE_URL.'/outChannel/qryPolByPolNo.do?c='.self::API_CHANNEL_CODE;
-		//dump($request_url);
+		dump($request_url);
 		$response = Curl::to($request_url)
 			->returnResponseObject()
 			->withData($request_data)
@@ -611,6 +689,8 @@ class PaInsCurlController
 			->asJson()
 			->withTimeout($this->retry_time)
 			->post();
+		$responses = json_encode($response, JSON_FORCE_OBJECT);
+		print_r($responses);
 		//dd($response);
 		//失败返回
 		if($response->status != 200)
@@ -621,6 +701,7 @@ class PaInsCurlController
 		}
 		$data = $response->content->data;//获取密文
 		$data = $this->aes_crypt_helper->decrypt($data, $key);
+		dd($data);
 		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
@@ -687,6 +768,8 @@ class PaInsCurlController
 		$request_url = self::API_INSURE_URL.'/outChannel/downloadPolicy.do?c='.self::API_CHANNEL_CODE.'&policyNo='.$warranty_code;
 		dump($request_url);
 	}
+
+
 
 
 //	==================================续保接口(Renewal)==========================================

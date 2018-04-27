@@ -42,7 +42,8 @@ class IndexController extends BaseController{
         $page = isset($input['page']) ? $input['page'] : 1; //页码
         $num = isset($input['num']) ? $input['num'] : config('list_num.api.insurance'); //单页数量
         $user = User::where('account_id', $all['account_id'])->first();
-        $sell_status = $user->sell_status;
+//        $sell_status = $user->sell_status;
+		$sell_status = '3';
         $input['ids'] = isset($input['ids']) ? $input['ids'] : [];
 
         //符合条件产品总数
