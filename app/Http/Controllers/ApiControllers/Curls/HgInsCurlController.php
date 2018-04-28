@@ -51,6 +51,11 @@ class HgInsCurlController
     // 生产环境查询支付请求地址:
     const API_PAY_SEL_URL_PRODUCT = 'http://112.74.228.113/sinosoft-pay-web-gateway/scanPay/queryForPayResult';
 
+
+
+
+
+
     /**
      * 初始化
      *

@@ -12,16 +12,16 @@
  * Accept:application/json;charset=UTF-8
  * 请求参数示例：
  * {
-		"requestId":"请求编号，以便区分请求，参考格式：渠道代码_时间戳，可不传",
-		"data":"加密之后的json串"
-	}
+"requestId":"请求编号，以便区分请求，参考格式：渠道代码_时间戳，可不传",
+"data":"加密之后的json串"
+}
  * 相应参数示例：
  * {
-		"requestId":"与请求报文中的请求编号一致",
-		"returnCode":"接入响应码",
-		"returnMsg":"接入响应信息"
-		"data": "加密之后的json串"
-   }
+"requestId":"与请求报文中的请求编号一致",
+"returnCode":"接入响应码",
+"returnMsg":"接入响应信息"
+"data": "加密之后的json串"
+}
  *
  * 产品信息-个险产品-平安e生保PLUS  A000000042  P005_01
  * 产品信息-团险产品-e企保（年保单）  A000000029  G005
@@ -54,36 +54,36 @@ use App\Helper\AesCryptHelper;
 
 class PaInsCurlController
 {
-    protected $request;
+	protected $request;
 
-    protected $charset;
+	protected $charset;
 
-    protected $encrypt;
+	protected $encrypt;
 
-    protected $retry_time;
+	protected $retry_time;
 
-    protected $sign_help;
+	protected $sign_help;
 
-    protected $private_key;
+	protected $private_key;
 
-    protected $public_key;
+	protected $public_key;
 
-    protected $wk_public_key;
+	protected $wk_public_key;
 
-    //接口地址(测试)
-    const API_INSURE_URL = 'https://test-mobile.health.pingan.com:42443/ehis-hm';
-    //渠道编码
-    const API_CHANNEL_CODE = 'BJTYKJ';
-    //渠道编号
-    const API_CHANNEL_id = '710';
-    //秘钥
-    const API_INSURE_URL_KEY = '123456';
-    //收银台APP秘钥
+	//接口地址(测试)
+	const API_INSURE_URL = 'https://test-mobile.health.pingan.com:42443/ehis-hm';
+	//渠道编码
+	const API_CHANNEL_CODE = 'BJTYKJ';
+	//渠道编号
+	const API_CHANNEL_id = '710';
+	//秘钥
+	const API_INSURE_URL_KEY = '123456';
+	//收银台APP秘钥
 	const API_PAY_URL_KEY = '4OQ5RBPPJC5F8PUKXMUDGDU7G96BVHVW9FFW4AJVZ2KWH2W8WP9QSTNVQXEAOREURU3UQJ6N9CWPVM731K2SQDP5RZXBGII9MDJXIKJ9D4W9MSEZR3FQEQBTTD8L6MRY';
-    //测试环境请求支付请求地址：(TODO GET)
-    const API_PAY_URL = 'http://test-mobile.health.pingan.com/ehis-hm/cashier/pay.do';
-    //生产环境查询支付请求地址:(TODO https)
-    const API_PAY_URL_PRODUCT = 'https://mobile.health.pingan.com/ehis-hm/cashier/pay.do';
+	//测试环境请求支付请求地址：(TODO GET)
+	const API_PAY_URL = 'http://test-mobile.health.pingan.com/ehis-hm/cashier/pay.do';
+	//生产环境查询支付请求地址:(TODO https)
+	const API_PAY_URL_PRODUCT = 'https://mobile.health.pingan.com/ehis-hm/cashier/pay.do';
 
 	/**
 	 * 初始化
@@ -102,28 +102,31 @@ class PaInsCurlController
 		$this->private_key = file_get_contents('../config/rsa_private_key_1024_pkcs8.pem');
 		$this->public_key = file_get_contents('../config/rsa_public_key_1024_pkcs8.pem');
 		$this->wk_public_key = file_get_contents('../config/wk_rsa_public_key.pem');
-		if(!preg_match("/call_back/",$this->request->url())) {
-			$this->original_data = $this->decodeOriginData();
-			//业务参数 解析出源数据json字符串
-			$repository = new InsuranceApiFromRepository();
-			//天眼产品ID
-			$insurance_id = isset($this->original_data['ty_product_id']) ? $this->original_data['ty_product_id'] : 0;
-			//内部产品唯一码
-			$private_p_code = isset($this->original_data['private_p_code']) ? $this->original_data['private_p_code'] : 0;
-			if ($insurance_id) {
-				$this->bind = $repository->getApiStatusOn($insurance_id);    //获取当前正在启用的API来源信息
-			} else {
-				$this->bind = $repository->getApiByPrivatePCode($private_p_code);   //通过内部产品唯一码获得相关信息
-			}
-			if (empty($this->bind)) {
-				return ['data' => 'product not exist', 'code' => 400];
-			}
-		}
+//		if(!preg_match("/call_back/",$this->request->url())) {
+//			$this->original_data = $this->decodeOriginData();
+//			//业务参数 解析出源数据json字符串
+//			$repository = new InsuranceApiFromRepository();
+//			//天眼产品ID
+//			$insurance_id = isset($this->original_data['ty_product_id']) ? $this->original_data['ty_product_id'] : 0;
+//			//内部产品唯一码
+//			$private_p_code = isset($this->original_data['private_p_code']) ? $this->original_data['private_p_code'] : 0;
+//			if ($insurance_id) {
+//				$this->bind = $repository->getApiStatusOn($insurance_id);    //获取当前正在启用的API来源信息
+//			} else {
+//				$this->bind = $repository->getApiByPrivatePCode($private_p_code);   //通过内部产品唯一码获得相关信息
+//			}
+//			if (empty($this->bind)) {
+//				return ['data' => 'product not exist', 'code' => 400];
+//			}
+//		}
 	}
 
 	/**
 	 * 产品详情
-	 *
+	 * @access public
+	 * @params productId|产品编号|String|是
+	 * @requstr_type POST
+	 * @return mixed
 	 */
 	public function getApiOption()
 	{
@@ -184,37 +187,37 @@ class PaInsCurlController
 	 * @params premType|缴费频次|String|个险必传 1趸缴 2月缴 3季缴 4半年缴 5年缴 6趸缴累加
 	 *
 	 * @params insurants|被保人列表
-							seqno|被保人序号，当有多人时，分别为1,2,3等。只有1人则默认为1|String|是
-							birthday|生日（YYYY-MM-DD）|String|是
-							sex|性别：M男F女	|String|是
-							hasSocialSecurity|是否有社保(Y/N)|String|	依产品形态
-							relationshipWithPrimaryInsurant|与第一被保险人关系|默认为”1”|依产品形态
-	  						coverages|保障列表
-												benLevel|档次|String|	是
-												A000000042	P005_01	平安e生保PLUS	计划一	01	400000
-																					计划二	02	1000000
-																					计划三	03	2000000
-																					计划四	04	6000000
-												A000000029	G005	e企保（年保单）	经济款	01	59500
-																					标准款	02	119000
-																					豪华款	03	238000
-												A000000030	G006	e企保（月保单）	经济款	01	59500
-																					标准款	02	119000
-																					豪华款	03	238000
-												sumInsured|保额,单位元,整数|String|个险必传
-												period|保障期间(月),默认12|String|个险必传
-												periodDay|保障期间(天),默认为0|String|个险必传
+	seqno|被保人序号，当有多人时，分别为1,2,3等。只有1人则默认为1|String|是
+	birthday|生日（YYYY-MM-DD）|String|是
+	sex|性别：M男F女	|String|是
+	hasSocialSecurity|是否有社保(Y/N)|String|	依产品形态
+	relationshipWithPrimaryInsurant|与第一被保险人关系|默认为”1”|依产品形态
+	coverages|保障列表
+	benLevel|档次|String|	是
+	A000000042	P005_01	平安e生保PLUS	计划一	01	400000
+	计划二	02	1000000
+	计划三	03	2000000
+	计划四	04	6000000
+	A000000029	G005	e企保（年保单）	经济款	01	59500
+	标准款	02	119000
+	豪华款	03	238000
+	A000000030	G006	e企保（月保单）	经济款	01	59500
+	标准款	02	119000
+	豪华款	03	238000
+	sumInsured|保额,单位元,整数|String|个险必传
+	period|保障期间(月),默认12|String|个险必传
+	periodDay|保障期间(天),默认为0|String|个险必传
 	 * 保障期间问题
-		period (保险期间月)periodDay（保险期间天），paymentPeriod（缴费期间月）,paymentPeriodDay（缴费期间天）
-		其他非H804产品均为1年期，period和paymentPeriod为12，periodDay和paymentPeriodDay为0即可。
+	period (保险期间月)periodDay（保险期间天），paymentPeriod（缴费期间月）,paymentPeriodDay（缴费期间天）
+	其他非H804产品均为1年期，period和paymentPeriod为12，periodDay和paymentPeriodDay为0即可。
 	 * @reponse returnCode|响应码：00成功；其它：失败	|String
 	 * @reponse returnMsg|响应信息|String
 	 * @reponse data TODO data需要解密
-						totalPrem|总保费，单位元，2位小数	|String
-						isShareCoverage|是否家庭共用	|String
-	 					insurants(被保人列表)
-												seqno 	被保人序号
-												insurantPrem 	被保人保费，单位元，2位小数
+	totalPrem|总保费，单位元，2位小数	|String
+	isShareCoverage|是否家庭共用	|String
+	insurants(被保人列表)
+	seqno 	被保人序号
+	insurantPrem 	被保人保费，单位元，2位小数
 	 * @requstr_type POST
 	 * @return mixed
 	 *
@@ -275,7 +278,7 @@ class PaInsCurlController
 			->withTimeout($this->retry_time)
 			->post();
 		$responses = json_encode($response, JSON_FORCE_OBJECT);
-        //print_r($responses);
+		//print_r($responses);
 		//失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
@@ -386,7 +389,7 @@ class PaInsCurlController
 			->post();
 		$responses = json_encode($response, JSON_FORCE_OBJECT);
 		print_r($responses);
-	    //失败返回
+		//失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
 		if($response->content->returnCode != 00){
@@ -400,6 +403,7 @@ class PaInsCurlController
 	}
 
 	/**
+	 * TODO 等平安开发接口2018-04-28
 	 * 保险核保-团险corporate  todo 3-30 保单生效
 	 * @access public
 	 *
@@ -423,23 +427,23 @@ class PaInsCurlController
 		$input['productId'] = 'A000000029';//产品编码
 		$input['outChannelOrderId'] = '12345678901';//渠道方订单号,最大32位
 		$input['applyDate'] = date('Y-m-d',time());
-		$input['effDate'] = date('Y-m-d',strtotime('+3 day'));//保单生效日期 TODO 3-30 做限制
-		$input['totalPremium'] = '276.00';
+		$input['effDate'] = date('Y-m-d',strtotime('+5 day'));//保单生效日期 TODO 3-30 做限制
+		$input['totalPremium'] = '414.00';
 		$input['isNoticeConfirm'] = 'Y';//是否同意页面告知：Y/N
 		//投保企业信息
-		$input['applyOrg'] = [];
-		$input['applyOrg']['name'] = '北京天眼互联科技有限公司';//企业名称	String	VARCHAR2(60)
-		$input['applyOrg']['industryCode'] = 'G';//行业类型。参见附录3.11	String	VARCHAR2(4)
-		$input['applyOrg']['provinceCode'] = '110000';//企业所在地(省)。参见附录3.12	String		VARCHAR2(6)
-		$input['applyOrg']['cityName'] = '北京市';//企业所在地(市)	String		VARCHAR2(100)
-		$input['applyOrg']['areaName'] = '东城区';//企业所在地(县/区)	String		VARCHAR2(100)
-		$input['applyOrg']['address'] = '北京市东城区夕照寺中街14号';//企业所在地（详细地址）	String		VARCHAR2(300)
-		$input['applyOrg']['orgCodeType'] = '1';//证件类型（1:社会统一信用代码、2:组织机构代码证、3：企业营业执照）	String		VARCHAR2(2)
-		$input['applyOrg']['organizationCode'] = '91110105MA007MTL18';//证件号码	String		VARCHAR2(20)
-		$input['applyOrg']['orgCodeEffDate'] = '2036-08-16';//证件有效期YYYY-MM-DD	String
+		$input['applicant'] = [];
+		$input['applicant']['name'] = '北京天眼互联科技有限公司';//企业名称	String	VARCHAR2(60)
+		$input['applicant']['industryCode'] = 'G';//行业类型。参见附录3.11	String	VARCHAR2(4)
+		$input['applicant']['provinceCode'] = '110000';//企业所在地(省)。参见附录3.12	String		VARCHAR2(6)
+		$input['applicant']['cityName'] = '北京市';//企业所在地(市)	String		VARCHAR2(100)
+		$input['applicant']['areaName'] = '东城区';//企业所在地(县/区)	String		VARCHAR2(100)
+		$input['applicant']['address'] = '北京市东城区夕照寺中街14号';//企业所在地（详细地址）	String		VARCHAR2(300)
+		$input['applicant']['orgCodeType'] = '1';//证件类型（1:社会统一信用代码、2:组织机构代码证、3：企业营业执照）	String		VARCHAR2(2)
+		$input['applicant']['organizationCode'] = '91110105MA007MTL18';//证件号码	String		VARCHAR2(20)
+		$input['applicant']['orgCodeEffDate'] = '2036-08-16';//证件有效期YYYY-MM-DD	String
 		//企业联系人信息
-		$input['applyOrg']['orgContactPerson'] = [];
-		$input['applyOrg']['orgContactPerson'][] = [
+		$input['applicant']['orgContactPerson'] = [];
+		$input['applicant']['orgContactPerson'][] = [
 			'name'=>'王石磊',//姓名	String		VARCHAR2(80)
 			'certificateTypeCode'=>'1',//证件类型。参见附录3.3	String	VARCHAR2(2)
 			'certificateNo'=>'410881199406056514',//证件号码	String		VARCHAR2(20)
@@ -448,32 +452,74 @@ class PaInsCurlController
 			'phoneNo'=>'15701681524',//手机号码	String	VARCHAR2(32)
 			'email'=>'wangsl@inschos.com',//经办人邮箱	String	VARCHAR2(50)
 		];
+		$input['applicant']['orgContactPerson'] = json_decode(json_encode($input['applicant']['orgContactPerson']));
 		//被保人信息列表
 		$input['insurants'] = [];
 		$input['insurants'][0]['seqno'] = '1';
 		$input['insurants'][0]['name'] = '史亚文';
 		$input['insurants'][0]['idType'] = '1';
-		$input['insurants'][0]['idno'] = '412723199501151643';
+		$input['insurants'][0]['idno'] = '412723199501151641';
 		$input['insurants'][0]['birthday'] = '1995-01-15';
 		$input['insurants'][0]['sex'] = 'F';
 		$input['insurants'][0]['socialSecurity'] = 'Y';//是否有社保: 有：Y/N
 		$input['insurants'][0]['socialSecurityLocation'] = 'H010000';//社保所在地
 		$input['insurants'][0]['relationshipWithApplicant'] = '1';//与投保人关系1	本人2	配偶9	其他I	父母J	子女
-		$input['insurants'][0]['relationshipWithPrimaryInsurant'] = '1';//与第一被保险人关系1	主被保险人2	配偶3	子女4	父母6	其他
+		$input['insurants'][0]['relationshipWithPrimaryInsurant'] = '1';//与第一被保险人关系1主被保险人2	配偶3子女4父母6其他
 		$input['insurants'][0]['contactInfo']['mobile'] = '15701681524';
 		$input['insurants'][0]['contactInfo']['email'] = 'wangsl@inschos.com';
 		$input['insurants'][0]['coverages'][0]['planType'] = '0';//险种类别（0主险/1附加险），默认为0
-		$input['insurants'][0]['coverages'][0]['sumInsured'] = '400000';//保额
+		$input['insurants'][0]['coverages'][0]['sumInsured'] = '59500';//保额
 		$input['insurants'][0]['coverages'][0]['benLevel'] = '01';//档次
 		$input['insurants'][0]['coverages'][0]['period'] = '12';//保险期间（月）
 		$input['insurants'][0]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][0]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][0]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][0]['coverages'][0]['actualPrem'] = '210.00';//实际保费，单位元，小数点后两位
-		$input['insurants'][0]['healthNotes'][0]['questionId'] = 'P00500001';//健康告知问题ID
-		$input['insurants'][0]['healthNotes'][0]['answer'] = 'Y';//答案值Y/N
-		$input['insurants'][0]['healthNotes'][0]['healthNoteSeq'] = '1';//告知批次号,1,2,3：如果接口方会记录且传给健康险历史告知记录，则该字段用于区分各批次健康告知，否则默认传值为
-		$input['insurants'][0]['isRenewal'] = 'Y';//是否续保
+		$input['insurants'][0]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
+
+
+		$input['insurants'][1]['seqno'] = '2';
+		$input['insurants'][1]['name'] = '史亚文';
+		$input['insurants'][1]['idType'] = '1';
+		$input['insurants'][1]['idno'] = '412723199501151642';
+		$input['insurants'][1]['birthday'] = '1995-01-15';
+		$input['insurants'][1]['sex'] = 'F';
+		$input['insurants'][1]['socialSecurity'] = 'Y';//是否有社保: 有：Y/N
+		$input['insurants'][1]['socialSecurityLocation'] = 'H010000';//社保所在地
+		$input['insurants'][1]['relationshipWithApplicant'] = '1';//与投保人关系1	本人2	配偶9	其他I	父母J	子女
+		$input['insurants'][1]['relationshipWithPrimaryInsurant'] = '1';//与第一被保险人关系1主被保险人2	配偶3子女4	父母6	其他
+		$input['insurants'][1]['contactInfo']['mobile'] = '15701681524';
+		$input['insurants'][1]['contactInfo']['email'] = 'wangsl@inschos.com';
+		$input['insurants'][1]['coverages'][0]['planType'] = '0';//险种类别（0主险/1附加险），默认为0
+		$input['insurants'][1]['coverages'][0]['sumInsured'] = '59500';//保额
+		$input['insurants'][1]['coverages'][0]['benLevel'] = '01';//档次
+		$input['insurants'][1]['coverages'][0]['period'] = '12';//保险期间（月）
+		$input['insurants'][1]['coverages'][0]['periodDay'] = '0';//保险期间（天）
+		$input['insurants'][1]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
+		$input['insurants'][1]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
+		$input['insurants'][1]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
+
+
+		$input['insurants'][2]['seqno'] = '3';
+		$input['insurants'][2]['name'] = '史亚文';
+		$input['insurants'][2]['idType'] = '1';
+		$input['insurants'][2]['idno'] = '412723199501151643';
+		$input['insurants'][2]['birthday'] = '1995-01-15';
+		$input['insurants'][2]['sex'] = 'F';
+		$input['insurants'][2]['socialSecurity'] = 'Y';//是否有社保: 有：Y/N
+		$input['insurants'][2]['socialSecurityLocation'] = 'H010000';//社保所在地
+		$input['insurants'][2]['relationshipWithApplicant'] = '1';//与投保人关系1	本人2	配偶9	其他I	父母J	子女
+		$input['insurants'][2]['relationshipWithPrimaryInsurant'] = '1';//与第一被保险人关系1主被保险人2	配偶3子女4	父母6	其他
+		$input['insurants'][2]['contactInfo']['mobile'] = '15701681524';
+		$input['insurants'][2]['contactInfo']['email'] = 'wangsl@inschos.com';
+		$input['insurants'][2]['coverages'][0]['planType'] = '0';//险种类别（0主险/1附加险），默认为0
+		$input['insurants'][2]['coverages'][0]['sumInsured'] = '59500';//保额
+		$input['insurants'][2]['coverages'][0]['benLevel'] = '01';//档次
+		$input['insurants'][2]['coverages'][0]['period'] = '12';//保险期间（月）
+		$input['insurants'][2]['coverages'][0]['periodDay'] = '0';//保险期间（天）
+		$input['insurants'][2]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
+		$input['insurants'][2]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
+		$input['insurants'][2]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
+
 		//授权信息
 		$input['authInfo'] = [];
 		$input['authInfo']['initialChargeMode'] = '9';//首期收费方式
@@ -486,6 +532,8 @@ class PaInsCurlController
 		$key = self::API_INSURE_URL_KEY;//测试环境
 		$input = json_encode($input,JSON_UNESCAPED_UNICODE);
 		dump($input);
+		$input = '{ "isNoticeConfirm": "Y", "channelInfo": { "agencyCode": "A010000277", "sellerCode": "sellerCode76", "sellerName": "锄啊售员81", "mainAgentNo": "H020000000" }, "productCode": "G005", "productId": "A000000029", "applyingTypeCode": "G", "effDate": "2018-05-01", "totalPremium": "414", "esaleSourceType": "710", "applyDate": "2018-04-28", "submitChannel": "1", "insurants": [{ "birthday": "1991-02-21", "idType": "2", "seqno": "1", "sex": "F", "coverages": [{ "planType": "0", "sumInsured": "59500", "actualPrem": "138", "paymentPeriodDay": "0", "planCode": "G005", "periodDay": "0", "paymentPeriod": "12", "period": "12", "benLevel": "01" }], "currentResidence": "H010000", "contactInfo": { "email": "insurant1@test.com" }, "relationshipWithApplicant": "9", "relationshipWithPrimaryInsurant": "1", "name": "被保人测评啊9", "idno": "01234561" }, { "birthday": "1991-02-21", "idType": "2", "seqno": "2", "sex": "F", "coverages": [{ "planType": "0", "sumInsured": "59500", "actualPrem": "138", "paymentPeriodDay": "0", "planCode": "G005", "periodDay": "0", "paymentPeriod": "12", "period": "12", "benLevel": "01" }], "currentResidence": "H010000", "contactInfo": { "email": "insurant2@test.com" }, "relationshipWithApplicant": "1", "relationshipWithPrimaryInsurant": "1", "name": "被保人测评啊57", "idno": "01234562" }, { "birthday": "1991-02-21", "idType": "2", "seqno": "3", "sex": "F", "coverages": [{ "planType": "0", "sumInsured": "59500", "actualPrem": "138", "paymentPeriodDay": "0", "planCode": "G005", "periodDay": "0", "paymentPeriod": "12", "period": "12", "benLevel": "01" }], "currentResidence": "H010000", "contactInfo": { "email": "insurant3@test.com" }, "relationshipWithApplicant": "1", "relationshipWithPrimaryInsurant": "1", "name": "被保人测评啊75", "idno": "01234563" }], "isSendMail": "N", "authInfo": { "initialChargeMode": "9" }, "applicant": { "imUploads": [{ "imUploadFlag": "N", "imUploadFileId": "", "imUploadType": "" }], "organizationCode": "91310000MA1GK0L81E", "orgCodeType": "1", "customerType": "G", "orgContactPerson": { "phoneNo": "17712111211", "birthday": "1999-2-22", "sex": "F", "certificateTypeCode": "2", "email": "TEST0@test.com", "name": "企业联系亄啊", "certificateNo": "14789612" }, "areaName": "北京", "industryCode": "U", "address": "北京", "cityName": "北京", "provinceCode": "110000", "name": "投保企业测试哄啊" }, "serviceAgreementInfo": { "premType": "5" }, "orderId": "99000000042844726" }';
+		print_r($input);
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
 		$request_url = self::API_INSURE_URL.'/outChannel/validate.do?c='.self::API_CHANNEL_CODE;;
@@ -1043,24 +1091,24 @@ class PaInsCurlController
 
 //    =================================公共方法==================================
 
-    /**
-     * 业务参数 解析出源数据json字符串
-     *
-     */
-    protected function decodeOriginData()
-    {
-        $input = $this->request->all();
-        $original_data_array = $this->sign_help->tyDecodeOriginData($input['biz_content']);
-        return $original_data_array;
-    }
+	/**
+	 * 业务参数 解析出源数据json字符串
+	 *
+	 */
+	protected function decodeOriginData()
+	{
+		$input = $this->request->all();
+		$original_data_array = $this->sign_help->tyDecodeOriginData($input['biz_content']);
+		return $original_data_array;
+	}
 
-    /**
-     * 测试处理费率表execl
-     *
-     */
-    public function testExcel()
-    {
-        set_time_limit(0);//永不超时
+	/**
+	 * 测试处理费率表execl
+	 *
+	 */
+	public function testExcel()
+	{
+		set_time_limit(0);//永不超时
 //        $a = ExcelHelper::excelToArray("upload/tariff/hg_tariff.xlsx");
 //        $a =[
 //			["code","message"],
@@ -1079,160 +1127,160 @@ class PaInsCurlController
 //            }
 //        }
 //        print_r(json_encode($insert_data));
-    }
+	}
 
-    /**
-     * 封装默认试算参数
-     * @param $restrict_genes
-     * @return array
-     */
-    protected function encapsulateDefaultData($restrict_genes)
-    {
-        $data = [];
-        foreach ($restrict_genes as $restrict_gene) {
-            $data[$restrict_gene['ty_key']] = $restrict_gene['value'];
-        }
-        $data['productCode'] = $this->api_m_info->p_code;
-        return $data;
-    }
+	/**
+	 * 封装默认试算参数
+	 * @param $restrict_genes
+	 * @return array
+	 */
+	protected function encapsulateDefaultData($restrict_genes)
+	{
+		$data = [];
+		foreach ($restrict_genes as $restrict_gene) {
+			$data[$restrict_gene['ty_key']] = $restrict_gene['value'];
+		}
+		$data['productCode'] = $this->api_m_info->p_code;
+		return $data;
+	}
 
-    /**
-     * 转换格式，用于调用接口
-     * @param $restrict_genes
-     * @param $data
-     * @return mixed
-     */
-    protected function transformToApiWay($restrict_genes, $data)
-    {
-        foreach ($restrict_genes as $restrict_gene) {
-            if (isset($data[$restrict_gene['ty_key']])) {
-                foreach ($restrict_gene['values'] as $value) {
-                    if ($data[$restrict_gene['ty_key']] == $value['ty_value']) {
-                        $data[$restrict_gene['ty_key']] = $value['value'];
-                        break;
-                    }
-                }
-                $data[$restrict_gene['key']] = $data[$restrict_gene['ty_key']];
-                unset($data[$restrict_gene['ty_key']]);
-            }
-        }
+	/**
+	 * 转换格式，用于调用接口
+	 * @param $restrict_genes
+	 * @param $data
+	 * @return mixed
+	 */
+	protected function transformToApiWay($restrict_genes, $data)
+	{
+		foreach ($restrict_genes as $restrict_gene) {
+			if (isset($data[$restrict_gene['ty_key']])) {
+				foreach ($restrict_gene['values'] as $value) {
+					if ($data[$restrict_gene['ty_key']] == $value['ty_value']) {
+						$data[$restrict_gene['ty_key']] = $value['value'];
+						break;
+					}
+				}
+				$data[$restrict_gene['key']] = $data[$restrict_gene['ty_key']];
+				unset($data[$restrict_gene['ty_key']]);
+			}
+		}
 
-        return $data;
-    }
+		return $data;
+	}
 
-    /**
-     * 去掉不用的Key
-     * @param $data
-     * @return mixed
-     */
-    protected function onlyTyKey($data)
-    {
-        foreach ($data as &$item) {
-            if (isset($item['values'])) {
-                foreach ($item['values'] as &$value) {
-                    unset($value['value']);
-                }
-            }
-            unset($item['key']);
-        }
+	/**
+	 * 去掉不用的Key
+	 * @param $data
+	 * @return mixed
+	 */
+	protected function onlyTyKey($data)
+	{
+		foreach ($data as &$item) {
+			if (isset($item['values'])) {
+				foreach ($item['values'] as &$value) {
+					unset($value['value']);
+				}
+			}
+			unset($item['key']);
+		}
 
-        return $data;
-    }
+		return $data;
+	}
 
-    /**
-     * 内外键值转换
-     * @param $input
-     * @return $data
-     */
-    protected function ins_key_value_change($input){
-        $tmp_data = [];
-        $original_data = $input;
-        $insurance_attributes = (new InsuranceAttributesRepository())->findAttributesRecursionByBindId($this->bind->id);
-        $attributes = $original_data['insurance_attributes'];
-        foreach ($insurance_attributes as $insurance_attribute) {
-            $module_key = $insurance_attribute['module_key'];
-            if (isset($attributes[$module_key]) && isset($insurance_attribute['productAttributes'])) {
-                if (isset($attributes[$module_key][0])) { // 如果是二维数组
-                    foreach ($attributes[$module_key] as $key => $item) {
-                        foreach ($insurance_attribute['productAttributes'] as $productAttribute) {
-                            $ty_key = $productAttribute['ty_key'];
-                            if (isset($attributes[$module_key][$key][$ty_key]) && isset($productAttribute['attributeValues'])) {
-                                foreach ($productAttribute['attributeValues'] as $attributeValue) {
-                                    $ty_value = $attributeValue['ty_value'];
-                                    if ($ty_value == $attributes[$module_key][$key][$ty_key]) {
-                                        $attributes[$module_key][$key][$ty_key] = $attributeValue['controlValue'];
-                                    }
-                                }
-                                if ($ty_key == 'ty_beibaoren_occupation') {
-                                    $occupation = $attributes[$module_key][$ty_key];
-                                    list(,,$code) = explode('-', $occupation);
-                                    $attributes[$module_key][$key][$ty_key] = $code;
-                                }
-                            }
-                            $tmp_data[$module_key][$key][$productAttribute['apiName']] = $attributes[$module_key][$key][$ty_key];
-                        }
-                    }
-                } else {
-                    foreach ($insurance_attribute['productAttributes'] as $productAttribute) {
-                        $ty_key = $productAttribute['ty_key'];
-                        if (isset($attributes[$module_key][$ty_key]) && isset($productAttribute['attributeValues'])) {
-                            foreach ($productAttribute['attributeValues'] as $attributeValue) {
-                                $ty_value = $attributeValue['ty_value'];
-                                if ($ty_value == $attributes[$module_key][$ty_key]) {
-                                    $attributes[$module_key][$ty_key] = $attributeValue['controlValue'];
-                                }
-                            }
-                            if ($ty_key == 'ty_toubaoren_occupation') {
-                                $occupation = $attributes[$module_key][$ty_key];
-                                list(,,$code) = explode('-', $occupation);
-                                $attributes[$module_key][$ty_key] = $code;
-                            }
-                        }
-                        $tmp_data[$module_key][$productAttribute['apiName']] = $attributes[$module_key][$ty_key];
-                    }
-                }
-            }
-        }
-        $data = [];
-        foreach ($tmp_data as $module_key => $item) {
-            if($module_key == 'ty_beibaoren') {
-                $data['policyInsuredList'] = $item;//被保人列表
-            }elseif ($module_key == 'ty_toubaoren') {
-                $data['policyHolder'] = $item;//投保人
-            }elseif ($module_key == 'ty_shouyiren') {
-                $data['bnf'] = $item;//受益人
-            }elseif($module_key == 'ty_base') {
-                $data['base'] = $item;//基础信息
-            }else{
-                array_push($data, $item);
-            }
-        }
-        return $data;
-    }
+	/**
+	 * 内外键值转换
+	 * @param $input
+	 * @return $data
+	 */
+	protected function ins_key_value_change($input){
+		$tmp_data = [];
+		$original_data = $input;
+		$insurance_attributes = (new InsuranceAttributesRepository())->findAttributesRecursionByBindId($this->bind->id);
+		$attributes = $original_data['insurance_attributes'];
+		foreach ($insurance_attributes as $insurance_attribute) {
+			$module_key = $insurance_attribute['module_key'];
+			if (isset($attributes[$module_key]) && isset($insurance_attribute['productAttributes'])) {
+				if (isset($attributes[$module_key][0])) { // 如果是二维数组
+					foreach ($attributes[$module_key] as $key => $item) {
+						foreach ($insurance_attribute['productAttributes'] as $productAttribute) {
+							$ty_key = $productAttribute['ty_key'];
+							if (isset($attributes[$module_key][$key][$ty_key]) && isset($productAttribute['attributeValues'])) {
+								foreach ($productAttribute['attributeValues'] as $attributeValue) {
+									$ty_value = $attributeValue['ty_value'];
+									if ($ty_value == $attributes[$module_key][$key][$ty_key]) {
+										$attributes[$module_key][$key][$ty_key] = $attributeValue['controlValue'];
+									}
+								}
+								if ($ty_key == 'ty_beibaoren_occupation') {
+									$occupation = $attributes[$module_key][$ty_key];
+									list(,,$code) = explode('-', $occupation);
+									$attributes[$module_key][$key][$ty_key] = $code;
+								}
+							}
+							$tmp_data[$module_key][$key][$productAttribute['apiName']] = $attributes[$module_key][$key][$ty_key];
+						}
+					}
+				} else {
+					foreach ($insurance_attribute['productAttributes'] as $productAttribute) {
+						$ty_key = $productAttribute['ty_key'];
+						if (isset($attributes[$module_key][$ty_key]) && isset($productAttribute['attributeValues'])) {
+							foreach ($productAttribute['attributeValues'] as $attributeValue) {
+								$ty_value = $attributeValue['ty_value'];
+								if ($ty_value == $attributes[$module_key][$ty_key]) {
+									$attributes[$module_key][$ty_key] = $attributeValue['controlValue'];
+								}
+							}
+							if ($ty_key == 'ty_toubaoren_occupation') {
+								$occupation = $attributes[$module_key][$ty_key];
+								list(,,$code) = explode('-', $occupation);
+								$attributes[$module_key][$ty_key] = $code;
+							}
+						}
+						$tmp_data[$module_key][$productAttribute['apiName']] = $attributes[$module_key][$ty_key];
+					}
+				}
+			}
+		}
+		$data = [];
+		foreach ($tmp_data as $module_key => $item) {
+			if($module_key == 'ty_beibaoren') {
+				$data['policyInsuredList'] = $item;//被保人列表
+			}elseif ($module_key == 'ty_toubaoren') {
+				$data['policyHolder'] = $item;//投保人
+			}elseif ($module_key == 'ty_shouyiren') {
+				$data['bnf'] = $item;//受益人
+			}elseif($module_key == 'ty_base') {
+				$data['base'] = $item;//基础信息
+			}else{
+				array_push($data, $item);
+			}
+		}
+		return $data;
+	}
 
-    /**
-     * 根据身份证号获取性别，生日，年龄（周岁）
-     * @param $id 身份证号
-     * @return $data
-     */
-    public function getMSgByID($id){
-        //过了这年的生日才算多了1周岁
-        if(empty($id)) return [];
-        $date=strtotime(substr($id,6,8));
-        //获得出生年月日的时间戳
-        $today=strtotime('today');
-        //获得今日的时间戳
-        $diff=floor(($today-$date)/86400/365);
-        //得到两个日期相差的大体年数
-        //strtotime加上这个年数后得到那日的时间戳后与今日的时间戳相比
-        $age=strtotime(substr($id,6,8).' +'.$diff.'years')>$today?($diff+1):$diff;
-        //通过身份证号查询出性别与生日
-        $birth = strlen($id)==15 ? ('19' . substr($id, 6, 6)) : substr($id, 6, 8);
-        $sex = substr($id, (strlen($id)==15 ? -2 : -1), 1) % 2 ? '男' : '女'; //1为男 2为女
-        $data = [];
-        $data['sex'] = $sex;
-        $data['birth'] = $birth;
-        $data['age'] = $age;
-        return $data;
-    }
+	/**
+	 * 根据身份证号获取性别，生日，年龄（周岁）
+	 * @param $id 身份证号
+	 * @return $data
+	 */
+	public function getMSgByID($id){
+		//过了这年的生日才算多了1周岁
+		if(empty($id)) return [];
+		$date=strtotime(substr($id,6,8));
+		//获得出生年月日的时间戳
+		$today=strtotime('today');
+		//获得今日的时间戳
+		$diff=floor(($today-$date)/86400/365);
+		//得到两个日期相差的大体年数
+		//strtotime加上这个年数后得到那日的时间戳后与今日的时间戳相比
+		$age=strtotime(substr($id,6,8).' +'.$diff.'years')>$today?($diff+1):$diff;
+		//通过身份证号查询出性别与生日
+		$birth = strlen($id)==15 ? ('19' . substr($id, 6, 6)) : substr($id, 6, 8);
+		$sex = substr($id, (strlen($id)==15 ? -2 : -1), 1) % 2 ? '男' : '女'; //1为男 2为女
+		$data = [];
+		$data['sex'] = $sex;
+		$data['birth'] = $birth;
+		$data['age'] = $age;
+		return $data;
+	}
 }

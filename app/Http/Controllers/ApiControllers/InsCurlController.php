@@ -40,26 +40,25 @@ class InsCurlController
     }
 
     //产品列表
-    public function ins()
-    {
-        $res = $this->api->ins();
-        return response($res['data'], $res['code']);
-    }
+//    public function ins()
+//    {
+//        $res = $this->api->ins();
+//        return response($res['data'], $res['code']);
+//    }
 
     //产品详情
-    public function insInfo()
-    {
-    	dd(132);die;
-        $res = $this->api->insInfo();
-        return response(json_encode($res['data']), $res['code']);
-    }
+//    public function insInfo()
+//    {
+//        $res = $this->api->insInfo();
+//        return response(json_encode($res['data']), $res['code']);
+//    }
 
     //投保属性
-    public function insAttr()
-    {
-        $res = $this->api->insAttr();
-        return response($res['data'], $res['code']);
-    }
+//    public function insAttr()
+//    {
+//        $res = $this->api->insAttr();
+//        return response($res['data'], $res['code']);
+//    }
 
 
     //算费
