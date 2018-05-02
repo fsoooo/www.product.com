@@ -424,26 +424,32 @@ class PaInsCurlController
 	public function checkCorporateIns()
 	{
 		$input = [];
-		$input['productId'] = 'A000000029';//产品编码
+		$input['productId'] = 'A000000030';//产品编码
 		$input['outChannelOrderId'] = '12345678901';//渠道方订单号,最大32位
 		$input['applyDate'] = date('Y-m-d',time());
-		$input['effDate'] = date('Y-m-d',strtotime('+5 day'));//保单生效日期 TODO 3-30 做限制
-		$input['totalPremium'] = '414.00';
+		$input['effDate'] = date('Y-m-d',strtotime('+3 day'));//保单生效日期 TODO 3-30 做限制
+		$input['totalPremium'] = '84.00';
 		$input['isNoticeConfirm'] = 'Y';//是否同意页面告知：Y/N
 		//投保企业信息
-		$input['applicant'] = [];
-		$input['applicant']['name'] = '北京天眼互联科技有限公司';//企业名称	String	VARCHAR2(60)
-		$input['applicant']['industryCode'] = 'G';//行业类型。参见附录3.11	String	VARCHAR2(4)
-		$input['applicant']['provinceCode'] = '110000';//企业所在地(省)。参见附录3.12	String		VARCHAR2(6)
-		$input['applicant']['cityName'] = '北京市';//企业所在地(市)	String		VARCHAR2(100)
-		$input['applicant']['areaName'] = '东城区';//企业所在地(县/区)	String		VARCHAR2(100)
-		$input['applicant']['address'] = '北京市东城区夕照寺中街14号';//企业所在地（详细地址）	String		VARCHAR2(300)
-		$input['applicant']['orgCodeType'] = '1';//证件类型（1:社会统一信用代码、2:组织机构代码证、3：企业营业执照）	String		VARCHAR2(2)
-		$input['applicant']['organizationCode'] = '91110105MA007MTL18';//证件号码	String		VARCHAR2(20)
-		$input['applicant']['orgCodeEffDate'] = '2036-08-16';//证件有效期YYYY-MM-DD	String
+		$input['applyOrg'] = [];
+		$input['applyOrg']['name'] = '北京天眼互联科技有限公司';//企业名称	String	VARCHAR2(60)
+		$input['applyOrg']['industryCode'] = 'G';//行业类型。参见附录3.11	String	VARCHAR2(4)
+		$input['applyOrg']['provinceCode'] = '110000';//企业所在地(省)。参见附录3.12	String		VARCHAR2(6)
+		$input['applyOrg']['cityName'] = '北京市';//企业所在地(市)	String		VARCHAR2(100)
+		$input['applyOrg']['areaName'] = '东城区';//企业所在地(县/区)	String		VARCHAR2(100)
+		$input['applyOrg']['address'] = '北京市东城区夕照寺中街14号';//企业所在地（详细地址）	String		VARCHAR2(300)
+		$input['applyOrg']['orgCodeType'] = '1';//证件类型（1:社会统一信用代码、2:组织机构代码证、3：企业营业执照）	String		VARCHAR2(2)
+		$input['applyOrg']['organizationCode'] = '91110105MA007MTL18';//证件号码	String		VARCHAR2(20)
+		$input['applyOrg']['orgCodeEffDate'] = '2036-08-16';//证件有效期YYYY-MM-DD	String
+//		$input['applyOrg']['imUploads'] = [];//企业影像
+//		$input['applyOrg']['imUploads'][0]['imUploadFlag'] = 'N';//是否上传影像：Y/N
+//		$input['applyOrg']['imUploads'][0]['imUploadType'] = '';//上传影像类型
+//		$input['applyOrg']['imUploads'][0]['imUploadFileId'] = '';//影像id
+		$input['isSendMail'] = 'N';//是否发送欢迎信电子凭证：Y/N
+
 		//企业联系人信息
-		$input['applicant']['orgContactPerson'] = [];
-		$input['applicant']['orgContactPerson'][] = [
+		$input['applyOrg']['orgContactPerson'] = [];
+		$input['applyOrg']['orgContactPerson'] = [
 			'name'=>'王石磊',//姓名	String		VARCHAR2(80)
 			'certificateTypeCode'=>'1',//证件类型。参见附录3.3	String	VARCHAR2(2)
 			'certificateNo'=>'410881199406056514',//证件号码	String		VARCHAR2(20)
@@ -452,13 +458,13 @@ class PaInsCurlController
 			'phoneNo'=>'15701681524',//手机号码	String	VARCHAR2(32)
 			'email'=>'wangsl@inschos.com',//经办人邮箱	String	VARCHAR2(50)
 		];
-		$input['applicant']['orgContactPerson'] = json_decode(json_encode($input['applicant']['orgContactPerson']));
+		$input['applyOrg']['orgContactPerson'] = json_decode(json_encode($input['applyOrg']['orgContactPerson']));
 		//被保人信息列表
 		$input['insurants'] = [];
 		$input['insurants'][0]['seqno'] = '1';
 		$input['insurants'][0]['name'] = '史亚文';
 		$input['insurants'][0]['idType'] = '1';
-		$input['insurants'][0]['idno'] = '412723199501151641';
+		$input['insurants'][0]['idno'] = '412723199501151643';
 		$input['insurants'][0]['birthday'] = '1995-01-15';
 		$input['insurants'][0]['sex'] = 'F';
 		$input['insurants'][0]['socialSecurity'] = 'Y';//是否有社保: 有：Y/N
@@ -474,14 +480,14 @@ class PaInsCurlController
 		$input['insurants'][0]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][0]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][0]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][0]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
+		$input['insurants'][0]['coverages'][0]['actualPrem'] = '28.00';//实际保费，单位元，小数点后两位
 
 
 		$input['insurants'][1]['seqno'] = '2';
 		$input['insurants'][1]['name'] = '史亚文';
 		$input['insurants'][1]['idType'] = '1';
-		$input['insurants'][1]['idno'] = '412723199501151642';
-		$input['insurants'][1]['birthday'] = '1995-01-15';
+		$input['insurants'][1]['idno'] = '41088119941230078X';
+		$input['insurants'][1]['birthday'] = '1994-12-30';
 		$input['insurants'][1]['sex'] = 'F';
 		$input['insurants'][1]['socialSecurity'] = 'Y';//是否有社保: 有：Y/N
 		$input['insurants'][1]['socialSecurityLocation'] = 'H010000';//社保所在地
@@ -496,15 +502,15 @@ class PaInsCurlController
 		$input['insurants'][1]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][1]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][1]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][1]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
+		$input['insurants'][1]['coverages'][0]['actualPrem'] = '28.00';//实际保费，单位元，小数点后两位
 
 
 		$input['insurants'][2]['seqno'] = '3';
-		$input['insurants'][2]['name'] = '史亚文';
+		$input['insurants'][2]['name'] = '程景峰';
 		$input['insurants'][2]['idType'] = '1';
-		$input['insurants'][2]['idno'] = '412723199501151643';
-		$input['insurants'][2]['birthday'] = '1995-01-15';
-		$input['insurants'][2]['sex'] = 'F';
+		$input['insurants'][2]['idno'] = '410822199501120035';
+		$input['insurants'][2]['birthday'] = '1995-01-12';
+		$input['insurants'][2]['sex'] = 'M';
 		$input['insurants'][2]['socialSecurity'] = 'Y';//是否有社保: 有：Y/N
 		$input['insurants'][2]['socialSecurityLocation'] = 'H010000';//社保所在地
 		$input['insurants'][2]['relationshipWithApplicant'] = '1';//与投保人关系1	本人2	配偶9	其他I	父母J	子女
@@ -518,22 +524,22 @@ class PaInsCurlController
 		$input['insurants'][2]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][2]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][2]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][2]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
-
+		$input['insurants'][2]['coverages'][0]['actualPrem'] = '28.00';//实际保费，单位元，小数点后两位
 		//授权信息
 		$input['authInfo'] = [];
 		$input['authInfo']['initialChargeMode'] = '9';//首期收费方式
 		//服务约定信息
 		$input['serviceAgreementInfo'] = [];
-		$input['serviceAgreementInfo']['premType'] = '5';//缴费频次,1	趸缴2	月缴3	季缴4	半年缴5	年缴6	趸缴累加
+		$input['serviceAgreementInfo']['premType'] = '1';//缴费频次,1	趸缴2	月缴3	季缴4	半年缴5	年缴6	趸缴累加
+		//渠道信息
+//		$input['channelInfo'] = [];
+//		$input['channelInfo']['sellerCode'] = 'sellerCode63';
+//		$input['channelInfo']['sellerName'] = '测试销售员14';
+		$input = json_encode($input,JSON_UNESCAPED_UNICODE);
 		dump($input);
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
-		$input = json_encode($input,JSON_UNESCAPED_UNICODE);
-		dump($input);
-		$input = '{ "isNoticeConfirm": "Y", "channelInfo": { "agencyCode": "A010000277", "sellerCode": "sellerCode76", "sellerName": "锄啊售员81", "mainAgentNo": "H020000000" }, "productCode": "G005", "productId": "A000000029", "applyingTypeCode": "G", "effDate": "2018-05-01", "totalPremium": "414", "esaleSourceType": "710", "applyDate": "2018-04-28", "submitChannel": "1", "insurants": [{ "birthday": "1991-02-21", "idType": "2", "seqno": "1", "sex": "F", "coverages": [{ "planType": "0", "sumInsured": "59500", "actualPrem": "138", "paymentPeriodDay": "0", "planCode": "G005", "periodDay": "0", "paymentPeriod": "12", "period": "12", "benLevel": "01" }], "currentResidence": "H010000", "contactInfo": { "email": "insurant1@test.com" }, "relationshipWithApplicant": "9", "relationshipWithPrimaryInsurant": "1", "name": "被保人测评啊9", "idno": "01234561" }, { "birthday": "1991-02-21", "idType": "2", "seqno": "2", "sex": "F", "coverages": [{ "planType": "0", "sumInsured": "59500", "actualPrem": "138", "paymentPeriodDay": "0", "planCode": "G005", "periodDay": "0", "paymentPeriod": "12", "period": "12", "benLevel": "01" }], "currentResidence": "H010000", "contactInfo": { "email": "insurant2@test.com" }, "relationshipWithApplicant": "1", "relationshipWithPrimaryInsurant": "1", "name": "被保人测评啊57", "idno": "01234562" }, { "birthday": "1991-02-21", "idType": "2", "seqno": "3", "sex": "F", "coverages": [{ "planType": "0", "sumInsured": "59500", "actualPrem": "138", "paymentPeriodDay": "0", "planCode": "G005", "periodDay": "0", "paymentPeriod": "12", "period": "12", "benLevel": "01" }], "currentResidence": "H010000", "contactInfo": { "email": "insurant3@test.com" }, "relationshipWithApplicant": "1", "relationshipWithPrimaryInsurant": "1", "name": "被保人测评啊75", "idno": "01234563" }], "isSendMail": "N", "authInfo": { "initialChargeMode": "9" }, "applicant": { "imUploads": [{ "imUploadFlag": "N", "imUploadFileId": "", "imUploadType": "" }], "organizationCode": "91310000MA1GK0L81E", "orgCodeType": "1", "customerType": "G", "orgContactPerson": { "phoneNo": "17712111211", "birthday": "1999-2-22", "sex": "F", "certificateTypeCode": "2", "email": "TEST0@test.com", "name": "企业联系亄啊", "certificateNo": "14789612" }, "areaName": "北京", "industryCode": "U", "address": "北京", "cityName": "北京", "provinceCode": "110000", "name": "投保企业测试哄啊" }, "serviceAgreementInfo": { "premType": "5" }, "orderId": "99000000042844726" }';
-		print_r($input);
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
 		$request_url = self::API_INSURE_URL.'/outChannel/validate.do?c='.self::API_CHANNEL_CODE;;
@@ -546,9 +552,9 @@ class PaInsCurlController
 			->asJson()
 			->withTimeout($this->retry_time)
 			->post();
-		dd($response);
-		$responses = json_encode($response, JSON_FORCE_OBJECT);
-		print_r($responses);
+		dump($response);
+//		$responses = json_encode($response, JSON_FORCE_OBJECT);
+//		print_r($responses);
 		//失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
@@ -558,7 +564,7 @@ class PaInsCurlController
 		}
 		$data = $response->content->data;//获取密文
 		$data = $this->aes_crypt_helper->decrypt($data, $key);
-		print_r($data);die;
+		dd($data);
 		return ['data'=>json_decode($data,true), 'code'=>200];
 	}
 
@@ -579,9 +585,9 @@ class PaInsCurlController
 	 */
 	public function payIns(){
 		$input = [];
-		$input['channel_order_no'] = '99000000042844502';//健康险订单号
-		$input['goods_desc'] = '平安e家保';//商品描述
-		$input['total_fee'] = '21000';//支付金额 精确到分
+		$input['channel_order_no'] = '99000000042845207';//健康险订单号
+		$input['goods_desc'] = '平安e企保';//商品描述
+		$input['total_fee'] = '41400';//支付金额 精确到分
 		$input['channel_id'] = self::API_CHANNEL_id;//渠道编码 固定值
 		$input['channel_id'] = '000102';//渠道编码 固定值
 		$input['return_url'] = 'https://n183967a96.iask.in:49292/api/pa_pay_result';//支付完成后，页面跳转地址
@@ -675,7 +681,7 @@ class PaInsCurlController
 	public function issue()
 	{
 		$input = [];
-		$input['orderId'] = '99000000042844502';//健康险订单号
+		$input['orderId'] = '99000000042845207';//健康险订单号
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -719,7 +725,7 @@ class PaInsCurlController
 	 */
 	public function selPolicy(){
 		$input = [];
-		$input['policyNo'] = '9200200050350351';//保单号
+		$input['policyNo'] = '99000000042845207';//保单号
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -763,7 +769,7 @@ class PaInsCurlController
 	 */
 	public function cacelPolicy(){
 		$input = [];
-		$input['policyNo'] = '9200200050348974';//保单号
+		$input['policyNo'] = '99000000042845207';//保单号
 		//退费方式，付款方式无需付款A: 渠道方退款，后继结算，下面的银行相关字段无需填
 		//银行批扣C: 健康险退款，后继结算，下面的银行相关字段必须填
 		$input['paymentMode'] = 'C';
@@ -812,7 +818,7 @@ class PaInsCurlController
 	 * @return mixed
 	 */
 	public function downloadPolicy(){
-		$warranty_code = urlencode('9200200050348936');
+		$warranty_code = urlencode('99000000042845207');
 		$request_url = self::API_INSURE_URL.'/outChannel/downloadPolicy.do?c='.self::API_CHANNEL_CODE.'&policyNo='.$warranty_code;
 		dump($request_url);
 	}
