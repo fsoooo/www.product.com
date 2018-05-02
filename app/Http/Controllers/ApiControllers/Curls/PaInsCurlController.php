@@ -225,10 +225,10 @@ class PaInsCurlController
 	public function quote()
 	{
 		$input = [];
-		$input['productId'] = 'A000000029';
+		$input['productId'] = 'A000000030';
 		$input['applyDate'] = date('Y-m-d',time());
 		$input['isShareCoverage'] = 'N';
-		$input['premType'] = '5';//缴费频次
+		$input['premType'] = '1';//缴费频次
 		$input['insurants'][] = [
 			'seqno'=>'1',
 			'birthday'=>'1995-01-15',
@@ -246,7 +246,22 @@ class PaInsCurlController
 		];
 		$input['insurants'][] = [
 			'seqno'=>'2',
-			'birthday'=>'1994-06-05',
+			'birthday'=>'1994-12-30',
+			'sex'=>'F',//M男F女
+			'hasSocialSecurity'=>'Y',//是否有社保(Y/N)
+			'relationshipWithPrimaryInsurant'=>'1',//与主被保人关系
+			'coverages'=>[
+				'0'=>[
+					'benLevel'=>'01',
+					'sumInsured'=>'59500',
+					'period'=>'12',//保障期间（月），默认12
+					'periodDay'=>'0',//保障期间（天），默认为0
+				],
+			],
+		];
+		$input['insurants'][] = [
+			'seqno'=>'3',
+			'birthday'=>'1995-01-12',
 			'sex'=>'M',//M男F女
 			'hasSocialSecurity'=>'Y',//是否有社保(Y/N)
 			'relationshipWithPrimaryInsurant'=>'1',//与主被保人关系
@@ -264,10 +279,10 @@ class PaInsCurlController
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
 		$input = json_encode($input,JSON_UNESCAPED_UNICODE);
-		//dump($input);
+		dump($input);
 		$input = $this->aes_crypt_helper->encrypt($input,$key);
 		$request_data['data'] = $input;
-		//dump(json_encode($request_data));
+		dump(json_encode($request_data));
 		$request_url = self::API_INSURE_URL.'/outChannel/calculatePremium.do?c='.self::API_CHANNEL_CODE;
 		//dump($request_url);
 		$response = Curl::to($request_url)
@@ -290,7 +305,7 @@ class PaInsCurlController
 		//$data = '240E5ADD76E8EA9F27296BD9F325E795F78A07D60183702EF505C89F04472280EB5F14CEDAFA17923DDBBB3B2744B4337D58C4D1C80808E2A6537FBD7EAFE73C219ECDF37807506275E4738A93A27B4E';
 		//TODO  解密
 		$data = $this->aes_crypt_helper->decrypt($data, $key);
-		//dd($data);
+		dd($data);
 		$msg['data']['price'] = json_decode($data,true)['totalPrem'];
 		$msg['data']['selected_options'] = '';
 		$msg['code'] = 200;
@@ -424,11 +439,11 @@ class PaInsCurlController
 	public function checkCorporateIns()
 	{
 		$input = [];
-		$input['productId'] = 'A000000030';//产品编码
+		$input['productId'] = 'A000000029';//产品编码
 		$input['outChannelOrderId'] = '12345678901';//渠道方订单号,最大32位
 		$input['applyDate'] = date('Y-m-d',time());
 		$input['effDate'] = date('Y-m-d',strtotime('+3 day'));//保单生效日期 TODO 3-30 做限制
-		$input['totalPremium'] = '84.00';
+		$input['totalPremium'] = '414.00';
 		$input['isNoticeConfirm'] = 'Y';//是否同意页面告知：Y/N
 		//投保企业信息
 		$input['applyOrg'] = [];
@@ -480,11 +495,11 @@ class PaInsCurlController
 		$input['insurants'][0]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][0]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][0]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][0]['coverages'][0]['actualPrem'] = '28.00';//实际保费，单位元，小数点后两位
+		$input['insurants'][0]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
 
 
 		$input['insurants'][1]['seqno'] = '2';
-		$input['insurants'][1]['name'] = '史亚文';
+		$input['insurants'][1]['name'] = '聂文瑾';
 		$input['insurants'][1]['idType'] = '1';
 		$input['insurants'][1]['idno'] = '41088119941230078X';
 		$input['insurants'][1]['birthday'] = '1994-12-30';
@@ -502,7 +517,7 @@ class PaInsCurlController
 		$input['insurants'][1]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][1]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][1]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][1]['coverages'][0]['actualPrem'] = '28.00';//实际保费，单位元，小数点后两位
+		$input['insurants'][1]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
 
 
 		$input['insurants'][2]['seqno'] = '3';
@@ -524,13 +539,13 @@ class PaInsCurlController
 		$input['insurants'][2]['coverages'][0]['periodDay'] = '0';//保险期间（天）
 		$input['insurants'][2]['coverages'][0]['paymentPeriod'] = '12';//缴费期间（月）
 		$input['insurants'][2]['coverages'][0]['paymentPeriodDay'] = '0';//缴费期间（天）
-		$input['insurants'][2]['coverages'][0]['actualPrem'] = '28.00';//实际保费，单位元，小数点后两位
+		$input['insurants'][2]['coverages'][0]['actualPrem'] = '138.00';//实际保费，单位元，小数点后两位
 		//授权信息
 		$input['authInfo'] = [];
 		$input['authInfo']['initialChargeMode'] = '9';//首期收费方式
 		//服务约定信息
 		$input['serviceAgreementInfo'] = [];
-		$input['serviceAgreementInfo']['premType'] = '1';//缴费频次,1	趸缴2	月缴3	季缴4	半年缴5	年缴6	趸缴累加
+		$input['serviceAgreementInfo']['premType'] = '5';//缴费频次,1	趸缴2	月缴3	季缴4	半年缴5	年缴6	趸缴累加
 		//渠道信息
 //		$input['channelInfo'] = [];
 //		$input['channelInfo']['sellerCode'] = 'sellerCode63';
@@ -553,8 +568,8 @@ class PaInsCurlController
 			->withTimeout($this->retry_time)
 			->post();
 		dump($response);
-//		$responses = json_encode($response, JSON_FORCE_OBJECT);
-//		print_r($responses);
+		$responses = json_encode($response, JSON_FORCE_OBJECT);
+		print_r($responses);
 		//失败返回
 		if($response->status != 200)
 			return ['data'=> 'default quote error', 'code'=> 400];
@@ -563,6 +578,7 @@ class PaInsCurlController
 			return json_encode(['data'=>$response->content->returnMsg, 'code'=> 400], JSON_UNESCAPED_UNICODE);
 		}
 		$data = $response->content->data;//获取密文
+		dump($data);
 		$data = $this->aes_crypt_helper->decrypt($data, $key);
 		dd($data);
 		return ['data'=>json_decode($data,true), 'code'=>200];
@@ -585,7 +601,7 @@ class PaInsCurlController
 	 */
 	public function payIns(){
 		$input = [];
-		$input['channel_order_no'] = '99000000042845207';//健康险订单号
+		$input['channel_order_no'] = '99000000042845281';//健康险订单号
 		$input['goods_desc'] = '平安e企保';//商品描述
 		$input['total_fee'] = '41400';//支付金额 精确到分
 		$input['channel_id'] = self::API_CHANNEL_id;//渠道编码 固定值
@@ -681,7 +697,7 @@ class PaInsCurlController
 	public function issue()
 	{
 		$input = [];
-		$input['orderId'] = '99000000042845207';//健康险订单号
+		$input['orderId'] = '99000000042845281';//健康险订单号
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
@@ -822,9 +838,6 @@ class PaInsCurlController
 		$request_url = self::API_INSURE_URL.'/outChannel/downloadPolicy.do?c='.self::API_CHANNEL_CODE.'&policyNo='.$warranty_code;
 		dump($request_url);
 	}
-
-
-
 
 //	==================================续保接口(Renewal)==========================================
 
