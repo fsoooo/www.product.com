@@ -341,21 +341,21 @@ class PaInsCurlController
 		$input['outChannelOrderId'] = '123456789';//渠道方订单号,最大32位
 		//投保人信息
 		$input['applicant'] = [];
-		$input['applicant']['name'] = '史亚文';
+		$input['applicant']['name'] = '程景峰';
 		$input['applicant']['idType'] = '1';
-		$input['applicant']['idno'] = '412723199501151643';
-		$input['applicant']['birthday'] = '1995-01-15';
-		$input['applicant']['sex'] = 'F';
+		$input['applicant']['idno'] = '410822199501120035';
+		$input['applicant']['birthday'] = '1995-01-12';
+		$input['applicant']['sex'] = 'M';
 		$input['applicant']['contactInfo']['mobile'] = '15701681524';
 		$input['applicant']['contactInfo']['email'] = 'wangsl@inschos.com';
 		//被保人信息列表
 		$input['insurants'] = [];
 		$input['insurants'][0]['seqno'] = '1';
-		$input['insurants'][0]['name'] = '史亚文';
+		$input['insurants'][0]['name'] = '程景峰';
 		$input['insurants'][0]['idType'] = '1';
-		$input['insurants'][0]['idno'] = '412723199501151643';
-		$input['insurants'][0]['birthday'] = '1995-01-15';
-		$input['insurants'][0]['sex'] = 'F';
+		$input['insurants'][0]['idno'] = '410822199501120035';
+		$input['insurants'][0]['birthday'] = '1995-01-12';
+		$input['insurants'][0]['sex'] = 'M';
 
 		$input['insurants'][0]['relationshipWithApplicant'] = '1';//与投保人关系1	本人2	配偶9	其他I	父母J	子女
 		$input['insurants'][0]['relationshipWithPrimaryInsurant'] = '1';//与第一被保险人关系1	主被保险人2	配偶3	子女4	父母6	其他
@@ -377,7 +377,6 @@ class PaInsCurlController
 		$input['insurants'][0]['healthNotes'][0]['questionId'] = 'P00500001';//健康告知问题ID
 		$input['insurants'][0]['healthNotes'][0]['answer'] = 'Y';//答案值Y/N
 		$input['insurants'][0]['healthNotes'][0]['healthNoteSeq'] = '1';//告知批次号,1,2,3：如果接口方会记录且传给健康险历史告知记录，则该字段用于区分各批次健康告知，否则默认传值为
-		$input['insurants'][0]['isRenewal'] = 'Y';//是否续保
 		//授权信息
 		$input['authInfo'] = [];
 		$input['authInfo']['initialChargeMode'] = '9';//首期收费方式
@@ -601,9 +600,9 @@ class PaInsCurlController
 	 */
 	public function payIns(){
 		$input = [];
-		$input['channel_order_no'] = '99000000042845281';//健康险订单号
-		$input['goods_desc'] = '平安e企保';//商品描述
-		$input['total_fee'] = '41400';//支付金额 精确到分
+		$input['channel_order_no'] = '99000000042845469';//健康险订单号
+		$input['goods_desc'] = '平安e生保plus';//商品描述
+		$input['total_fee'] = '21000';//支付金额 精确到分
 		$input['channel_id'] = self::API_CHANNEL_id;//渠道编码 固定值
 		$input['channel_id'] = '000102';//渠道编码 固定值
 		$input['return_url'] = 'https://n183967a96.iask.in:49292/api/pa_pay_result';//支付完成后，页面跳转地址
@@ -697,7 +696,7 @@ class PaInsCurlController
 	public function issue()
 	{
 		$input = [];
-		$input['orderId'] = '99000000042845281';//健康险订单号
+		$input['orderId'] = '99000000042845469';//健康险订单号
 		$request_data = [];
 		$request_data['requestId'] =  self::API_CHANNEL_CODE.time();
 		$key = self::API_INSURE_URL_KEY;//测试环境
