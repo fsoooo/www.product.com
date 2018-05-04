@@ -69,21 +69,37 @@ class PaInsCurlController
 	protected $public_key;
 
 	protected $wk_public_key;
+	//TODO  测试环境-http
+	//接口地址
+	const API_INSURE_URL_TEST = 'https://test-mobile.health.pingan.com:42443/ehis-hm';
+	//渠道编码
+	const API_CHANNEL_CODE_TEST = 'BJTYKJ';
+	//渠道编号
+	const API_CHANNEL_id_TEST = '710';
+	//秘钥
+	const API_INSURE_URL_KEY_TEST = '123456';
+	//收银台渠道id
+	const API_PAY_id_TEST = '000102';
+	//收银台APP秘钥
+	const API_PAY_URL_KEY_TEST = '4OQ5RBPPJC5F8PUKXMUDGDU7G96BVHVW9FFW4AJVZ2KWH2W8WP9QSTNVQXEAOREURU3UQJ6N9CWPVM731K2SQDP5RZXBGII9MDJXIKJ9D4W9MSEZR3FQEQBTTD8L6MRY';
+	//支付请求地址
+	const API_PAY_URL_TEST = 'http://test-mobile.health.pingan.com/ehis-hm/cashier/pay.do';
 
-	//接口地址(测试)
-	const API_INSURE_URL = 'https://test-mobile.health.pingan.com:42443/ehis-hm';
+	//TODO 生产环境-https===================================================================
+	//接口地址
+	const API_INSURE_URL = 'https://mobile.health.pingan.com/ehis-hm';
 	//渠道编码
 	const API_CHANNEL_CODE = 'BJTYKJ';
 	//渠道编号
 	const API_CHANNEL_id = '710';
 	//秘钥
-	const API_INSURE_URL_KEY = '123456';
+	const API_INSURE_URL_KEY = '2aercwjAPglTbcVm';
+	//收银台渠道id
+	const API_PAY_id = '000102';
 	//收银台APP秘钥
-	const API_PAY_URL_KEY = '4OQ5RBPPJC5F8PUKXMUDGDU7G96BVHVW9FFW4AJVZ2KWH2W8WP9QSTNVQXEAOREURU3UQJ6N9CWPVM731K2SQDP5RZXBGII9MDJXIKJ9D4W9MSEZR3FQEQBTTD8L6MRY';
-	//测试环境请求支付请求地址：(TODO GET)
-	const API_PAY_URL = 'http://test-mobile.health.pingan.com/ehis-hm/cashier/pay.do';
-	//生产环境查询支付请求地址:(TODO https)
-	const API_PAY_URL_PRODUCT = 'https://mobile.health.pingan.com/ehis-hm/cashier/pay.do';
+	const API_PAY_URL_KEY = 'LGAUMJ5SDF3C7TDJRBE9CP8CVT6C29E4OUXWCWUNIXRKCDUI14V8DE6UWVPK72CKVKZA28MJ8R798EVPCFSY7MZXNOG3EOGAQLHDK318OD9E87KLFTCXRIT8FGMU99DQ';
+	//支付请求地址
+	const API_PAY_URL = 'https://mobile.health.pingan.com/ehis-hm/cashier/pay.do';
 
 	/**
 	 * 初始化
@@ -600,9 +616,9 @@ class PaInsCurlController
 	 */
 	public function payIns(){
 		$input = [];
-		$input['channel_order_no'] = '99000000042845469';//健康险订单号
+		$input['channel_order_no'] = '88000000022255867';//健康险订单号
 		$input['goods_desc'] = '平安e生保plus';//商品描述
-		$input['total_fee'] = '21000';//支付金额 精确到分
+		$input['total_fee'] = '41400';//支付金额 精确到分
 		$input['channel_id'] = self::API_CHANNEL_id;//渠道编码 固定值
 		$input['channel_id'] = '000102';//渠道编码 固定值
 		$input['return_url'] = 'https://n183967a96.iask.in:49292/api/pa_pay_result';//支付完成后，页面跳转地址
