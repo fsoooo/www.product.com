@@ -1,0 +1,888 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: wangsl
+ * Date: 2018/5/16
+ * Time: 15:18
+ */
+
+namespace App\Http\Controllers\FrontendControllers;
+
+
+use App\Models\ApiFrom;
+use App\Models\InsApiBrokerage;
+use App\Models\OrderFinance;
+use App\Models\Policy;
+use App\Models\User;
+use App\Repositories\InsuranceApiFromRepository;
+use App\Repositories\InsuranceAttributesRepository;
+use App\Repositories\RestrictGeneRepository;
+use Carbon\Carbon;
+use function Couchbase\defaultDecoder;
+use Illuminate\Http\Request;
+use App\Helper\RsaSignHelp;
+use Illuminate\Support\Facades\DB;
+use Ixudra\Curl\Facades\Curl;
+use App\Models\InsOrder;
+use App\Models\Insure;
+use App\Models\InsIssue;
+use App\Helper\LogHelper;
+
+
+class IssueTkController extends BaseController
+{
+
+	//接口地址（生产）
+	const API_INSURE_PRODUCT = 'http://119.253.80.26/tk-link/rest';
+	// 承投保秘钥(生产环境)  TODO  已更新
+	const INS_ENCODE_KEY_PRODUCT= 'Fdw3bgdHj8I0S0i834F3882E56QB2S61e0Yzv1nC7D4y3b12Z40Bp9DbhS5o0hwb094O223c9n7184Xp908Ss1I92F0m0TH7PphB89i4iwGu00L2830c352B72TDW3Vl';
+
+	protected $sign_help;
+
+	protected $request;
+
+	public function __construct(Request $request)
+	{
+		$this->request = $request;
+		$this->sign_help = new RsaSignHelp();
+	}
+
+	/**
+	 * 出单
+	 * @return array
+	 */
+	public function issue()
+	{
+		$str = '{"coop_id":"yun_da_kuai_di","sign_type":"md5","sign":"5558ba0948ec70ca56da6a41028978d1","format":"json","charset":"utf-8","version":"1.0","timestamp":"1526463279000","serial_no":"2018050406562996973","product_type":"1122A01G","service_id":"02","apply_content":{"proposalNo":"000021122201824033200373512","tradeId":"152548921751512513748","outTradeId":"152548921751512513748","payAccount":"0000","payTime":"2018-05-16 17:34:39","payMoney":2,"payWayId":"79","fromId":"64090","comboId":"1122A01G01"}}';
+
+			$response = Curl::to(self::API_INSURE_PRODUCT)
+				->returnResponseObject()
+				->withData(json_decode($str,true))
+				->withHeader("Content-Type: application/json;charset=UTF-8")
+				->asJson(true)
+				->withTimeout(60)
+				->post();
+			print_r($response);die;
+	}
+	public function issueTk($union_order_code)
+    {
+        $input = $this->request->all();
+        $union_order_code = $input['union_order_code'];
+        $order = InsOrder::where(['union_order_code'=>$union_order_code,'api_from_uuid'=> 'Tk'])->first();
+        if(empty($order)){
+            return ['data' => 'empty', 'code' => 500];
+        }
+        $data = $this->originalDataMake();
+        $data['serial_no'] = $order->order_no;
+        $data['service_id'] = '02';
+        $data['apply_content'] = [
+            "proposalNo"=> $union_order_code,   //投保单号
+            "tradeId"=> $order->pay_code,    //支付订单号
+            "outTradeId"=> $order->pay_code, //第三方支付单号
+            "payAccount"=> "0000",  //支付账号
+            "payTime"=> date('Y-m-d H:i:s',time()),    //支付时间
+            "payMoney"=> $order->total_premium / 100,   //支付金额
+            "payWayId"=> "79", //支付方式 微信支付
+            "fromId"=> "64090", //渠道代码
+            "comboId"=> '1122A01G01'    //方案代码
+        ];
+        $sign = md5(self::INS_ENCODE_KEY_PRODUCT . json_encode($data['apply_content'])); //中文转译问题JSON_UNESCAPED_UNICODE** 泰康接口不用考虑中文转码问题
+        $data['sign'] = $sign;
+        //请求
+        LogHelper::logSuccess($data, 'tk_issue_data');
+        $response = Curl::to(self::API_INSURE_PRODUCT)
+            ->returnResponseObject()
+            ->withData($data)
+            ->withHeader("Content-Type: application/json;charset=UTF-8")
+            ->asJson(true)
+            ->withTimeout(60)
+            ->post();
+        //print_r($response);die;
+        $return = $response->content;
+        LogHelper::logSuccess($return, 'tk', 'issue_return_data');
+        if($return['result_code'] != 0){
+            return ['data' => $return['result_msg'], 'code' => 400];
+        }
+//        dd($response);
+        $result = $return['result_content'];
+        $result['union_order_code'] = $order->union_order_code;
+        return $this->handleIssue($result);
+    }
+    public function issueTkTest()
+    {
+        $input = $this->request->all();
+        $union_order_code = isset($input['union_order_code'])?$input['union_order_code']:"";
+        $order = InsOrder::where(['union_order_code'=>$union_order_code,'api_from_uuid'=> 'Tk'])->first();
+        if(empty($order)){
+            return ['data' => 'empty', 'code' => 500];
+        }
+        $data = $this->originalDataMake();
+        $data['serial_no'] = $order->order_no;
+        $data['service_id'] = '02';
+        $data['apply_content'] = [
+            "proposalNo"=> $union_order_code,   //投保单号
+            "tradeId"=> $order->pay_code,    //支付订单号
+            "outTradeId"=> $order->pay_code, //第三方支付单号
+            "payAccount"=> "0000",  //支付账号
+            "payTime"=> date('Y-m-d H:i:s',time()),    //支付时间
+            "payMoney"=> $order->total_premium / 100,   //支付金额
+            "payWayId"=> "79", //支付方式 微信支付
+            "fromId"=> "64090", //渠道代码
+            "comboId"=> '1122A01G01'    //方案代码
+        ];
+        $sign = md5(self::INS_ENCODE_KEY_PRODUCT . json_encode($data['apply_content'])); //中文转译问题JSON_UNESCAPED_UNICODE** 泰康接口不用考虑中文转码问题
+        $data['sign'] = $sign;
+        //请求
+        LogHelper::logSuccess($data, 'tk_issue_data');
+        $response = Curl::to(self::API_INSURE_PRODUCT)
+            ->returnResponseObject()
+            ->withData($data)
+            ->withHeader("Content-Type: application/json;charset=UTF-8")
+            ->asJson(true)
+            ->withTimeout(60)
+            ->post();
+        //print_r($response);die;
+        $return = $response->content;
+        LogHelper::logSuccess($return, 'tk', 'issue_return_data');
+        if($return['result_code'] != 0){
+            return ['data' => $return['result_msg'], 'code' => 400];
+        }
+//        dd($response);
+        $result = $return['result_content'];
+        $result['union_order_code'] = $order->union_order_code;
+        return $this->handleIssue($result);
+    }
+    /**
+     * 初始化固定参数
+     * @return array
+     */
+    public function originalDataMake()
+    {
+        $data = array();
+        $data['coop_id'] = 'yun_da_kuai_di';
+        $data['sign_type'] = 'md5';
+        $data['sign'] = ''; //业务参数封装完后处理
+        $data['format'] = 'json';
+        $data['charset'] = 'utf-8';
+        $data['version'] = '1.0';
+        $data['timestamp'] = time() . '000';
+        $data['serial_no'] = date('YmdHis'). rand(10, 99) . rand(100, 999);
+        $data['product_type'] = '1122A01G';
+        return $data;
+    }
+    protected function handleIssue($data)
+    {
+        $result = []; // 回调给代理商的数据
+		DB::beginTransaction();
+        try {
+            $insure = Insure::where('out_order_no', $data['union_order_code'])->first();
+            $insure->policy_status = 6;  //保单状态
+            $insure->ins_policy_code = $result['policy_order_code'] = $data['policyNo']; //保单号
+            $insure->member_id = $data['memberId']; //会员编号 泰康理赔时用
+            $insure->save();
+            DB::commit();
+            $result['start_time'] = $insure->ins_start_time;
+            $result['end_time'] = $insure->ins_end_time;
+            $result['ins_down_url'] = $data['policyUrl'];
+            $result['union_order_code'] = $data['union_order_code'];
+            $msg = ['data' => $result, 'code' => 200];
+            return $msg;
+        } catch (\Exception $exception) {
+            DB::rollBack();
+            LogHelper::logError($exception->getMessage(), 'handleIssue', 'handleIssue');
+            $msg = ['data' => $exception->getMessage(), 'code' => 444];
+            return $msg;
+        }
+    }
+    public function doTkIssue()
+    {
+        $str = '[
+{"union_order_code":"000021122201724005517340828","pay_code":"151264511645706385607"},
+{"union_order_code":"000021122201824012274972514","pay_code":"151513498595213657519"},
+{"union_order_code":"000021122201824012275141030","pay_code":"151515170223505183092"},
+{"union_order_code":"000021122201824012275153051","pay_code":"151515112262218930779"},
+{"union_order_code":"000021122201824012275204035","pay_code":"151515127222301932487"},
+{"union_order_code":"000021122201824012275934515","pay_code":"151515141632814730185"},
+{"union_order_code":"000021122201824012276005017","pay_code":"151515156579412316728"},
+{"union_order_code":"000021122201824013925700417","pay_code":"151573501507616637068"},
+{"union_order_code":"000021122201824013969083582","pay_code":"151573504662202386199"},
+{"union_order_code":"000021122201824014728916214","pay_code":"151618247709611899781"},
+{"union_order_code":"000021122201824015718732295","pay_code":"151671417699206623040"},
+{"union_order_code":"000021122201824015719059907","pay_code":"151671512163409250776"},
+{"union_order_code":"000021122201824015722991511","pay_code":"151671300316419329975"},
+{"union_order_code":"000021122201824015724593601","pay_code":"151671279898819103643"},
+{"union_order_code":"000021122201824015725394053","pay_code":"151671501556004952286"},
+{"union_order_code":"000021122201824015727304214","pay_code":"151671321416714947689"},
+{"union_order_code":"000021122201824015736200162","pay_code":"151671490649314454062"},
+{"union_order_code":"000021122201824015740953998","pay_code":"151671310911111847565"},
+{"union_order_code":"000021122201824015742778739","pay_code":"151671522943614232692"},
+{"union_order_code":"000021122201824015765213654","pay_code":"151671257725718343057"},
+{"union_order_code":"000021122201824015797777619","pay_code":"151671268402318756989"},
+{"union_order_code":"000021122201824015830314471","pay_code":"151670705174411278167"},
+{"union_order_code":"000021122201824015843678810","pay_code":"151671561308213412483"},
+{"union_order_code":"000021122201824015847360417","pay_code":"151671043482202177072"},
+{"union_order_code":"000021122201824015874506838","pay_code":"151671290158702438553"},
+{"union_order_code":"000021122201824015905075393","pay_code":"151671187226016063895"},
+{"union_order_code":"000021122201824015906219714","pay_code":"151671540011817546922"},
+{"union_order_code":"000021122201824015906611718","pay_code":"151671571971412786136"},
+{"union_order_code":"000021122201824015945634117","pay_code":"151670634327211816610"},
+{"union_order_code":"000021122201824015952821210","pay_code":"151671116447815481698"},
+{"union_order_code":"000021122201824015968229238","pay_code":"151670891602617861797"},
+{"union_order_code":"000021122201824016010920056","pay_code":"151671550434912632242"},
+{"union_order_code":"000021122201824016034599315","pay_code":"151670777674803098302"},
+{"union_order_code":"000021122201824016323992907","pay_code":"151686136365404790526"},
+{"union_order_code":"000021122201824016327413511","pay_code":"151685796697703163348"},
+{"union_order_code":"000021122201824016327539291","pay_code":"151686211831912086852"},
+{"union_order_code":"000021122201824016328540295","pay_code":"151685996535510854839"},
+{"union_order_code":"000021122201824016328804601","pay_code":"151685736013603153935"},
+{"union_order_code":"000021122201824016334859512","pay_code":"151685472415202077498"},
+{"union_order_code":"000021122201824016338567162","pay_code":"151686116995902025961"},
+{"union_order_code":"000021122201824016344168739","pay_code":"151686150908513510987"},
+{"union_order_code":"000021122201824016352396654","pay_code":"151685684182312022304"},
+{"union_order_code":"000021122201824016364406619","pay_code":"151685723443817937993"},
+{"union_order_code":"000021122201824016364993056","pay_code":"151686192347007770943"},
+{"union_order_code":"000021122201824016374087471","pay_code":"151684755955716908561"},
+{"union_order_code":"000021122201824016384261810","pay_code":"151686217199509873753"},
+{"union_order_code":"000021122201824016391555699","pay_code":"151686432392405784817"},
+{"union_order_code":"000021122201824016391839033","pay_code":"151686186259304657920"},
+{"union_order_code":"000021122201824016394461714","pay_code":"151686237596709311630"},
+{"union_order_code":"000021122201824016397729734","pay_code":"151686251972918057572"},
+{"union_order_code":"000021122201824016399691838","pay_code":"151685758333707332482"},
+{"union_order_code":"000021122201824016412728113","pay_code":"151686162313918380719"},
+{"union_order_code":"000021122201824016420974728","pay_code":"151686126894817090367"},
+{"union_order_code":"000021122201824016426949334","pay_code":"151686267431210424416"},
+{"union_order_code":"000021122201824016429687714","pay_code":"151686181392306569223"},
+{"union_order_code":"000021122201824016430848582","pay_code":"151684576563916520033"},
+{"union_order_code":"000021122201824016432396393","pay_code":"151685535169419077701"},
+{"union_order_code":"000021122201824016434599718","pay_code":"151686240634106009550"},
+{"union_order_code":"000021122201824016448971359","pay_code":"151686137446005367356"},
+{"union_order_code":"000021122201824016470393117","pay_code":"151684589355504550325"},
+{"union_order_code":"000021122201824016473418795","pay_code":"151686173098107177984"},
+{"union_order_code":"000021122201824016479613277","pay_code":"151686148632807049583"},
+{"union_order_code":"000021122201824016494721238","pay_code":"151685078320214272162"},
+{"union_order_code":"000021122201824016616990907","pay_code":"151696311701311379772"},
+{"union_order_code":"000021122201824016619101853","pay_code":"151696184197619214318"},
+{"union_order_code":"000021122201824016620419291","pay_code":"151696327463114521584"},
+{"union_order_code":"000021122201824016621771601","pay_code":"151695978475102664811"},
+{"union_order_code":"000021122201824016628011512","pay_code":"151696057790906627349"},
+{"union_order_code":"000021122201824016637503739","pay_code":"151696132235208704963"},
+{"union_order_code":"000021122201824016637636019","pay_code":"151696159600115705428"},
+{"union_order_code":"000021122201824017111201030","pay_code":"151722306652914447499"},
+{"union_order_code":"000021122201824017239344907","pay_code":"151730935527315340779"},
+{"union_order_code":"000021122201824017243952295","pay_code":"151730764430609885786"},
+{"union_order_code":"000021122201824017244249737","pay_code":"151730730841005944159"},
+{"union_order_code":"000021122201824017257554739","pay_code":"151730648369507434417"},
+{"union_order_code":"000021122201824017257685019","pay_code":"151730883599202134652"},
+{"union_order_code":"000021122201824017259799813","pay_code":"151730683637316065616"},
+{"union_order_code":"000021122201824017263229710","pay_code":"151730849077310757445"},
+{"union_order_code":"000021122201824017269586030","pay_code":"151730927980612441351"},
+{"union_order_code":"000021122201824017429046573","pay_code":"151736437172101752576"},
+{"union_order_code":"000021122201824017431036737","pay_code":"151736501403115366018"},
+{"union_order_code":"000021122201824017459041739","pay_code":"151736467228202684381"},
+{"union_order_code":"000021122201824017459245019","pay_code":"151736567067807508446"},
+{"union_order_code":"000021122201824017461174813","pay_code":"151736621193917486213"},
+{"union_order_code":"000021122201824017465405710","pay_code":"151736545300517987395"},
+{"union_order_code":"000021122201824017480851030","pay_code":"151736612676303860918"},
+{"union_order_code":"000021122201824017511304619","pay_code":"151736661445915039642"},
+{"union_order_code":"000021122201824017513018011","pay_code":"151736519989414437912"},
+{"union_order_code":"000021122201824017524393471","pay_code":"151736595405719888501"},
+{"union_order_code":"000021122201824017532666810","pay_code":"151736654092708359225"},
+{"union_order_code":"000021122201824017547110714","pay_code":"151736605304913452733"},
+{"union_order_code":"000021122201824017549126699","pay_code":"151736585660902817213"},
+{"union_order_code":"000021122201824017568224435","pay_code":"151736494041710997463"},
+{"union_order_code":"000021122201824017582985728","pay_code":"151736454645815664213"},
+{"union_order_code":"000021122201824017585935714","pay_code":"151736531388815967770"},
+{"union_order_code":"000021122201824017587095582","pay_code":"151736629992416085392"},
+{"union_order_code":"000021122201824017589303393","pay_code":"151736578260916489165"},
+{"union_order_code":"000021122201824017605503359","pay_code":"151736443017710590607"},
+{"union_order_code":"000021122201824017624149117","pay_code":"151736557003703368899"},
+{"union_order_code":"000021122201824017651190819","pay_code":"151736420429918701463"},
+{"union_order_code":"000021122201824017695598573","pay_code":"151746789634615856581"},
+{"union_order_code":"000021122201824017695849573","pay_code":"151746843659208008207"},
+{"union_order_code":"000021122201824017876475573","pay_code":"151755231740315312963"},
+{"union_order_code":"000021122201824017876478573","pay_code":"151755334041002931253"},
+{"union_order_code":"000021122201824018563585573","pay_code":"151788258246713087504"},
+{"union_order_code":"000021122201824018563704573","pay_code":"151788441215606735335"},
+{"union_order_code":"000021122201824018569912737","pay_code":"151788364774418932594"},
+{"union_order_code":"000021122201824018635375739","pay_code":"151788330248303343248"},
+{"union_order_code":"000021122201824018635730813","pay_code":"151788463513907641154"},
+{"union_order_code":"000021122201824018640698813","pay_code":"151788338881506808425"},
+{"union_order_code":"000021122201824018665589030","pay_code":"151788455691511718627"},
+{"union_order_code":"000021122201824018689659619","pay_code":"151788508231602327104"},
+{"union_order_code":"000021122201824018695871011","pay_code":"151788378713219728954"},
+{"union_order_code":"000021122201824018709180471","pay_code":"151788438796808051319"},
+{"union_order_code":"000021122201824018726526810","pay_code":"151788499179306549720"},
+{"union_order_code":"000021122201824018746196699","pay_code":"151788431182107082723"},
+{"union_order_code":"000021122201824018755828410","pay_code":"151788294787119974772"},
+{"union_order_code":"000021122201824018763708435","pay_code":"151788357140712035173"},
+{"union_order_code":"000021122201824018766474113","pay_code":"151788219089901134691"},
+{"union_order_code":"000021122201824018775953728","pay_code":"151788303400216384138"},
+{"union_order_code":"000021122201824018779253414","pay_code":"151788446598611965879"},
+{"union_order_code":"000021122201824018783127132","pay_code":"151788487804809736478"},
+{"union_order_code":"000021122201824018783318714","pay_code":"151788386314819602471"},
+{"union_order_code":"000021122201824018788501393","pay_code":"151788423602200583367"},
+{"union_order_code":"000021122201824018800860019","pay_code":"151788275546313749211"},
+{"union_order_code":"000021122201824018801783359","pay_code":"151788266928911370439"},
+{"union_order_code":"000021122201824018824121117","pay_code":"151788409671207288709"},
+{"union_order_code":"000021122201824018824263272","pay_code":"151788235595212906133"},
+{"union_order_code":"000021122201824018830970419","pay_code":"151788244299704330714"},
+{"union_order_code":"000021122201824018831118518","pay_code":"151788221841816121420"},
+{"union_order_code":"000021122201824018883362573","pay_code":"151796941962314814991"},
+{"union_order_code":"000021122201824018883430573","pay_code":"151797023078108477489"},
+{"union_order_code":"000021122201824019051724573","pay_code":"151805625830713378880"},
+{"union_order_code":"000021122201824019053012573","pay_code":"151805630912101840109"},
+{"union_order_code":"000021122201824019059037737","pay_code":"151805713526602463678"},
+{"union_order_code":"000021122201824019085690739","pay_code":"151805695671215974620"},
+{"union_order_code":"000021122201824019086360813","pay_code":"151805817487213090825"},
+{"union_order_code":"000021122201824019087409813","pay_code":"151805822398717085874"},
+{"union_order_code":"000021122201824019088517813","pay_code":"151805698831500932134"},
+{"union_order_code":"000021122201824019108479030","pay_code":"151805810174009836468"},
+{"union_order_code":"000021122201824019130493619","pay_code":"151805874038713027376"},
+{"union_order_code":"000021122201824019135445011","pay_code":"151805718656108348772"},
+{"union_order_code":"000021122201824019139870011","pay_code":"151805732484213326399"},
+{"union_order_code":"000021122201824019151740471","pay_code":"151805800871006879948"},
+{"union_order_code":"000021122201824019162775712","pay_code":"151805757036914705608"},
+{"union_order_code":"000021122201824019168252810","pay_code":"151805864466711329942"},
+{"union_order_code":"000021122201824019169230810","pay_code":"151805869281105452310"},
+{"union_order_code":"000021122201824019183102456","pay_code":"151805638624603547706"},
+{"union_order_code":"000021122201824019208056410","pay_code":"151805644670908180273"},
+{"union_order_code":"000021122201824019208938410","pay_code":"151805651535918971185"},
+{"union_order_code":"000021122201824019222987435","pay_code":"151805695414702982847"},
+{"union_order_code":"000021122201824019226664435","pay_code":"151805710151403503744"},
+{"union_order_code":"000021122201824019230249615","pay_code":"151805648069309244732"},
+{"union_order_code":"000021122201824019230281615","pay_code":"151805659241109400811"},
+{"union_order_code":"000021122201824019237233113","pay_code":"151805611998703316331"},
+{"union_order_code":"000021122201824019237276113","pay_code":"151805615710519383561"},
+{"union_order_code":"000021122201824019241722512","pay_code":"151805663404612542407"},
+{"union_order_code":"000021122201824019241743512","pay_code":"151805676442607115202"},
+{"union_order_code":"000021122201824019254602728","pay_code":"151805655678011963085"},
+{"union_order_code":"000021122201824019254941728","pay_code":"151805666971613410088"},
+{"union_order_code":"000021122201824019265378132","pay_code":"151805849537605679801"},
+{"union_order_code":"000021122201824019265413132","pay_code":"151805854241008553603"},
+{"union_order_code":"000021122201824019273602714","pay_code":"151805729044219908941"},
+{"union_order_code":"000021122201824019273713714","pay_code":"151805740347111698595"},
+{"union_order_code":"000021122201824019276905393","pay_code":"151805782449416985047"},
+{"union_order_code":"000021122201824019277678393","pay_code":"151805785768607843678"},
+{"union_order_code":"000021122201824019282306812","pay_code":"151805737632505873595"},
+{"union_order_code":"000021122201824019283608812","pay_code":"151805749611205191302"},
+{"union_order_code":"000021122201824019446032030","pay_code":"151814076019913571086"},
+{"union_order_code":"000021122201824019446402030","pay_code":"151814081892403913544"},
+{"union_order_code":"000021122201824019495927712","pay_code":"151814068281006069748"},
+{"union_order_code":"000021122201824019498397712","pay_code":"151814160320104243205"},
+{"union_order_code":"000021122201824019506120810","pay_code":"151814318683518658205"},
+{"union_order_code":"000021122201824019506265810","pay_code":"151814346054006468882"},
+{"union_order_code":"000021122201824019532414135","pay_code":"151814049945308292400"},
+{"union_order_code":"000021122201824019532875135","pay_code":"151814051798505116447"},
+{"union_order_code":"000021122201824019596865132","pay_code":"151814635819709915413"},
+{"union_order_code":"000021122201824019609653251","pay_code":"151814084974016654235"},
+{"union_order_code":"000021122201824019611061251","pay_code":"151814169294111458474"},
+{"union_order_code":"000021122201824023607940712","pay_code":"152142217585515430517"},
+{"union_order_code":"000021122201824023644580435","pay_code":"152142370304614904779"},
+{"union_order_code":"000021122201824023715612728","pay_code":"152142744627303877125"},
+{"union_order_code":"000021122201824023722895017","pay_code":"152142526713809802185"},
+{"union_order_code":"000021122201824023742940359","pay_code":"152142740607814665512"},
+{"union_order_code":"000021122201824023763201518","pay_code":"152142361738012247650"},
+{"union_order_code":"000021122201824024549541712","pay_code":"152187847594714873553"},
+{"union_order_code":"000021122201824024582563654","pay_code":"152194051733611318502"},
+{"union_order_code":"000021122201824024585009615","pay_code":"152194508283918130006"},
+{"union_order_code":"000021122201824024586891171","pay_code":"152190811374809288127"},
+{"union_order_code":"000021122201824024588368512","pay_code":"152194231230304873805"},
+{"union_order_code":"000021122201824024595039728","pay_code":"152195228330705297098"},
+{"union_order_code":"000021122201824024597789132","pay_code":"152195131821112349780"},
+{"union_order_code":"000021122201824024612961359","pay_code":"152195221188909077796"},
+{"union_order_code":"000021122201824024631285810","pay_code":"152194501066813276302"},
+{"union_order_code":"000021122201824024634918911","pay_code":"152193601354419725001"},
+{"union_order_code":"000021122201824024644383299","pay_code":"152194238281005855344"},
+{"union_order_code":"000021122201824024647861135","pay_code":"152196301520819551601"},
+{"union_order_code":"000021122201824024649306435","pay_code":"152195403597813598975"},
+{"union_order_code":"000021122201824024659211117","pay_code":"152194861641319241089"},
+{"union_order_code":"000021122201824024661003272","pay_code":"152197651140719804851"},
+{"union_order_code":"000021122201824024673203259","pay_code":"152194681064707599147"},
+{"union_order_code":"000021122201824024675526471","pay_code":"152195044252417229095"},
+{"union_order_code":"000021122201824024699834311","pay_code":"152194591270207422527"},
+{"union_order_code":"000021122201824024762529810","pay_code":"152193691847816849618"},
+{"union_order_code":"000021122201824024795104515","pay_code":"152197471725308513804"},
+{"union_order_code":"000021122201824024855190654","pay_code":"152203321444601208485"},
+{"union_order_code":"000021122201824024867035435","pay_code":"152204163684005068845"},
+{"union_order_code":"000021122201824024919375615","pay_code":"152204013087608095681"},
+{"union_order_code":"000021122201824024936400171","pay_code":"152202781387503617957"},
+{"union_order_code":"000021122201824024942265113","pay_code":"152203801610500971917"},
+{"union_order_code":"000021122201824024944501512","pay_code":"152203591225218450448"},
+{"union_order_code":"000021122201824024968107728","pay_code":"152203501157712976100"},
+{"union_order_code":"000021122201824024994541728","pay_code":"152211406738312798593"},
+{"union_order_code":"000021122201824024995994132","pay_code":"152212701805901952944"},
+{"union_order_code":"000021122201824025105646359","pay_code":"152212683503115250339"},
+{"union_order_code":"000021122201824025147342259","pay_code":"152213255113008891319"},
+{"union_order_code":"000021122201824025153310819","pay_code":"152211696549704381383"},
+{"union_order_code":"000021122201824025161502618","pay_code":"152208059865717994846"},
+{"union_order_code":"000021122201824025166624810","pay_code":"152211950171911107771"},
+{"union_order_code":"000021122201824025167045034","pay_code":"152215752236809505677"},
+{"union_order_code":"000021122201824025168235813","pay_code":"152211298873414373658"},
+{"union_order_code":"000021122201824025178765911","pay_code":"152219710956118927900"},
+{"union_order_code":"000021122201824025195353299","pay_code":"152220172773601648674"},
+{"union_order_code":"000021122201824025200533811","pay_code":"152221341613207225943"},
+{"union_order_code":"000021122201824025210908041","pay_code":"152221581489315563160"},
+{"union_order_code":"000021122201824025225416171","pay_code":"152219921344400077563"},
+{"union_order_code":"000021122201824025348996259","pay_code":"152220793568211331863"},
+{"union_order_code":"000021122201824025355505819","pay_code":"152220250613905152625"},
+{"union_order_code":"000021122201824025711213573","pay_code":"152247968476103233717"},
+{"union_order_code":"000021122201824025750578034","pay_code":"152248328841704880025"},
+{"union_order_code":"000021122201824025754255810","pay_code":"152247961037510807653"},
+{"union_order_code":"000021122201824025765558739","pay_code":"152249761060813983656"},
+{"union_order_code":"000021122201824025862015041","pay_code":"152248321095113869829"},
+{"union_order_code":"000021122201824025920903512","pay_code":"152255881200818523793"},
+{"union_order_code":"000021122201824025940589132","pay_code":"152257321795013256805"},
+{"union_order_code":"000021122201824026028039311","pay_code":"152254805749217542225"},
+{"union_order_code":"000021122201824026034786518","pay_code":"152254800902906651179"},
+{"union_order_code":"000021122201824026094495618","pay_code":"152267041508814607264"},
+{"union_order_code":"000021122201824026104569034","pay_code":"152267401372719734408"},
+{"union_order_code":"000021122201824026106415810","pay_code":"152265248791503883266"},
+{"union_order_code":"000021122201824026108875739","pay_code":"152265258598913244882"},
+{"union_order_code":"000021122201824026216079041","pay_code":"152265241108619276400"},
+{"union_order_code":"000021122201824026216494712","pay_code":"152263081570909089819"},
+{"union_order_code":"000021122201824026237649135","pay_code":"152265268483918102630"},
+{"union_order_code":"000021122201824026281986413","pay_code":"152275321435904601100"},
+{"union_order_code":"000021122201824026285167132","pay_code":"152274241841617279021"},
+{"union_order_code":"000021122201824026285278012","pay_code":"152271361402318508505"},
+{"union_order_code":"000021122201824026395931359","pay_code":"152272441112407419337"},
+{"union_order_code":"000021122201824026423442272","pay_code":"152275681012505837282"},
+{"union_order_code":"000021122201824026430368518","pay_code":"152272080837204302011"},
+{"union_order_code":"000021122201824026436901259","pay_code":"152272088696002498758"},
+{"union_order_code":"000021122201824026459637573","pay_code":"152281448967009721223"},
+{"union_order_code":"000021122201824026466224618","pay_code":"152283961457513239816"},
+{"union_order_code":"000021122201824026471553034","pay_code":"152282881408304341879"},
+{"union_order_code":"000021122201824026472536739","pay_code":"152281810930105051417"},
+{"union_order_code":"000021122201824026551360995","pay_code":"152282889460103067372"},
+{"union_order_code":"000021122201824026571398041","pay_code":"152281441006304740919"},
+{"union_order_code":"000021122201824026572772712","pay_code":"152280370954115129932"},
+{"union_order_code":"000021122201824026592173915","pay_code":"152280382623017967758"},
+{"union_order_code":"000021122201824026598007654","pay_code":"152281457076913150266"},
+{"union_order_code":"000021122201824026599554435","pay_code":"152280363235510592555"},
+{"union_order_code":"000021122201824026608184413","pay_code":"152280723209402892510"},
+{"union_order_code":"000021122201824026614261132","pay_code":"152283969509700565823"},
+{"union_order_code":"000021122201824026614489012","pay_code":"152281803230319720007"},
+{"union_order_code":"000021122201824026660691518","pay_code":"152289360964002295447"},
+{"union_order_code":"000021122201824026664723131","pay_code":"152290445437714143546"},
+{"union_order_code":"000021122201824026666644870","pay_code":"152289721408407226544"},
+{"union_order_code":"000021122201824026671907259","pay_code":"152289376654206877818"},
+{"union_order_code":"000021122201824026677406819","pay_code":"152289368707518567869"},
+{"union_order_code":"000021122201824026681293573","pay_code":"152289384466315418275"},
+{"union_order_code":"000021122201824026684308618","pay_code":"152290809275817118214"},
+{"union_order_code":"000021122201824026686301736","pay_code":"152291881454419099091"},
+{"union_order_code":"000021122201824026694111739","pay_code":"152290801393118074682"},
+{"union_order_code":"000021122201824026695839813","pay_code":"152289729575417407247"},
+{"union_order_code":"000021122201824026795394995","pay_code":"152289400865000789960"},
+{"union_order_code":"000021122201824026825430435","pay_code":"152289392871705334107"},
+{"union_order_code":"000021122201824026827553615","pay_code":"152291521267800612309"},
+{"union_order_code":"000021122201824026839586132","pay_code":"152288281794914014156"},
+{"union_order_code":"000021122201824026877441359","pay_code":"152297288984303822482"},
+{"union_order_code":"000021122201824026891172272","pay_code":"152300881018706527420"},
+{"union_order_code":"000021122201824026895730870","pay_code":"152297641623603555413"},
+{"union_order_code":"000021122201824026898659518","pay_code":"152297280849317841990"},
+{"union_order_code":"000021122201824026911033259","pay_code":"152298001219311731996"},
+{"union_order_code":"000021122201824026925501819","pay_code":"152298360955604148831"},
+{"union_order_code":"000021122201824026980906618","pay_code":"152298370914414180269"},
+{"union_order_code":"000021122201824027007726030","pay_code":"152299445787015784815"},
+{"union_order_code":"000021122201824027047143712","pay_code":"152306297105609931835"},
+{"union_order_code":"000021122201824027050387810","pay_code":"152305571679911787066"},
+{"union_order_code":"000021122201824027054068131","pay_code":"152306289207011411363"},
+{"union_order_code":"000021122201824027058350515","pay_code":"152307728262307265976"},
+{"union_order_code":"000021122201824027060142135","pay_code":"152305561615509859602"},
+{"union_order_code":"000021122201824027109233413","pay_code":"152306641257311190600"},
+{"union_order_code":"000021122201824027133441728","pay_code":"152307721222801329221"},
+{"union_order_code":"000021122201824027151648132","pay_code":"152309521907619546821"},
+{"union_order_code":"000021122201824027182554359","pay_code":"152306281253418140477"},
+{"union_order_code":"000021122201824027232460618","pay_code":"152316361374109680244"},
+{"union_order_code":"000021122201824027241179034","pay_code":"152319241400811421646"},
+{"union_order_code":"000021122201824027242205739","pay_code":"152316721357516152769"},
+{"union_order_code":"000021122201824027243311813","pay_code":"152317802043405410709"},
+{"union_order_code":"000021122201824027278405612","pay_code":"152319602044811859982"},
+{"union_order_code":"000021122201824027348424214","pay_code":"152316379708914292959"},
+{"union_order_code":"000021122201824027351970810","pay_code":"152314202033514319943"},
+{"union_order_code":"000021122201824027360766515","pay_code":"152316369657812845223"},
+{"union_order_code":"000021122201824027365565915","pay_code":"152314925682217268883"},
+{"union_order_code":"000021122201824027384979435","pay_code":"152316001341013906846"},
+{"union_order_code":"000021122201824027416862132","pay_code":"152326441972217934429"},
+{"union_order_code":"000021122201824027421425017","pay_code":"152323561770100943415"},
+{"union_order_code":"000021122201824027436337359","pay_code":"152323938451209812959"},
+{"union_order_code":"000021122201824027437128834","pay_code":"152323955085915875195"},
+{"union_order_code":"000021122201824027496968870","pay_code":"152323946681305354663"},
+{"union_order_code":"000021122201824027511054518","pay_code":"152323920734610737662"},
+{"union_order_code":"000021122201824027545865259","pay_code":"152325001158600275855"},
+{"union_order_code":"000021122201824027551638819","pay_code":"152323928663017022310"},
+{"union_order_code":"000021122201824027560668618","pay_code":"152325009479216028843"},
+{"union_order_code":"000021122201824027618747618","pay_code":"152335441315213557122"},
+{"union_order_code":"000021122201824027620427736","pay_code":"152332561349806567031"},
+{"union_order_code":"000021122201824027626079034","pay_code":"152334729426513580152"},
+{"union_order_code":"000021122201824027628175739","pay_code":"152334721453411830128"},
+{"union_order_code":"000021122201824027650611062","pay_code":"152334361108301581642"},
+{"union_order_code":"000021122201824027734164041","pay_code":"152332920958807184156"},
+{"union_order_code":"000021122201824027735203712","pay_code":"152329321833517514367"},
+{"union_order_code":"000021122201824027742692131","pay_code":"152330761544214162507"},
+{"union_order_code":"000021122201824027750667915","pay_code":"152335082012716686475"},
+{"union_order_code":"000021122201824027760829654","pay_code":"152333297458808921282"},
+{"union_order_code":"000021122201824027764602435","pay_code":"152333289441503893961"},
+{"union_order_code":"000021122201824027780065413","pay_code":"152332203330416688837"},
+{"union_order_code":"000021122201824027782882728","pay_code":"152333281312806076200"},
+{"union_order_code":"000021122201824027796792272","pay_code":"152333641071016263969"},
+{"union_order_code":"000021122201824027818726834","pay_code":"152340851778502978325"},
+{"union_order_code":"000021122201824027835169117","pay_code":"152340483688704735627"},
+{"union_order_code":"000021122201824027838893870","pay_code":"152341223063200826352"},
+{"union_order_code":"000021122201824027839835518","pay_code":"152341201157502971662"},
+{"union_order_code":"000021122201824027844088259","pay_code":"152340841067015369595"},
+{"union_order_code":"000021122201824027851545819","pay_code":"152341560833611593445"},
+{"union_order_code":"000021122201824027868154618","pay_code":"152341923481904155143"},
+{"union_order_code":"000021122201824027975976712","pay_code":"152341231668505672489"},
+{"union_order_code":"000021122201824028016046413","pay_code":"152341215093817327844"},
+{"union_order_code":"000021122201824028059030359","pay_code":"152346605619409455952"},
+{"union_order_code":"000021122201824029316581618","pay_code":"152385490142819751235"},
+{"union_order_code":"000021122201824029318027736","pay_code":"152384408023818496481"},
+{"union_order_code":"000021122201824029356750036","pay_code":"152384779293412330215"},
+{"union_order_code":"000021122201824029420728135","pay_code":"152387281676214324295"},
+{"union_order_code":"000021122201824029438163616","pay_code":"152383691689300702439"},
+{"union_order_code":"000021122201824029440705501","pay_code":"152383683331112824523"},
+{"union_order_code":"000021122201824029441233435","pay_code":"152385123389212396812"},
+{"union_order_code":"000021122201824029443113615","pay_code":"152385483281517365220"},
+{"union_order_code":"000021122201824029445778512","pay_code":"152384769924014657782"},
+{"union_order_code":"000021122201824029448179413","pay_code":"152384414961401929638"},
+{"union_order_code":"000021122201824029452266132","pay_code":"152387641961017261200"},
+{"union_order_code":"000021122201824029452411012","pay_code":"152385844280909541469"},
+{"union_order_code":"000021122201824029465441359","pay_code":"152384763153101671110"},
+{"union_order_code":"000021122201824029480634518","pay_code":"152384400967601594699"},
+{"union_order_code":"000021122201824029527066618","pay_code":"152393401546501199238"},
+{"union_order_code":"000021122201824029528567736","pay_code":"152393043556208207717"},
+{"union_order_code":"000021122201824029563427511","pay_code":"152391961051101249675"},
+{"union_order_code":"000021122201824029704587618","pay_code":"152402057520814547182"},
+{"union_order_code":"000021122201824029707065736","pay_code":"152402049342011142518"},
+{"union_order_code":"000021122201824029713772034","pay_code":"152402401612609889528"},
+{"union_order_code":"000021122201824029726946911","pay_code":"152403132001916878844"},
+{"union_order_code":"000021122201824029746941511","pay_code":"152402040931700700809"},
+{"union_order_code":"000021122201824029795571036","pay_code":"152402410204704570160"},
+{"union_order_code":"000021122201824029825878810","pay_code":"152400610075109725677"},
+{"union_order_code":"000021122201824029833137732","pay_code":"152404201958010055094"},
+{"union_order_code":"000021122201824029864215413","pay_code":"152401686445012465323"},
+{"union_order_code":"000021122201824029870062132","pay_code":"152400602064112631207"},
+{"union_order_code":"000021122201824029870219012","pay_code":"152403123639602457804"},
+{"union_order_code":"000021122201824029871943017","pay_code":"152401699219611323024"},
+{"union_order_code":"000021122201824029881458272","pay_code":"152401321195816210711"},
+{"union_order_code":"000021122201824029898125272","pay_code":"152408881137809120774"},
+{"union_order_code":"000021122201824029899455338","pay_code":"152412481499015704648"},
+{"union_order_code":"000021122201824029907302359","pay_code":"152409969508508849727"},
+{"union_order_code":"000021122201824029908313834","pay_code":"152409978314708231495"},
+{"union_order_code":"000021122201824029919162311","pay_code":"152410681339617899852"},
+{"union_order_code":"000021122201824029925109870","pay_code":"152410332247602489489"},
+{"union_order_code":"000021122201824029938309819","pay_code":"152409961079311568682"},
+{"union_order_code":"000021122201824029952762618","pay_code":"152411409936602593496"},
+{"union_order_code":"000021122201824029978834810","pay_code":"152410321101109688097"},
+{"union_order_code":"000021122201824030038145911","pay_code":"152411763840317746995"},
+{"union_order_code":"000021122201824030048947511","pay_code":"152409601067515074132"},
+{"union_order_code":"000021122201824030052128353","pay_code":"152409986725409239044"},
+{"union_order_code":"000021122201824030054744036","pay_code":"152411774889200224664"},
+{"union_order_code":"000021122201824030065043810","pay_code":"152409610290612163770"},
+{"union_order_code":"000021122201824030084591812","pay_code":"152414641195706588002"},
+{"union_order_code":"000021122201824030095797512","pay_code":"152411401487106991381"},
+{"union_order_code":"000021122201824030118168219","pay_code":"152420055442017838790"},
+{"union_order_code":"000021122201824030124195132","pay_code":"152422210408701270803"},
+{"union_order_code":"000021122201824030125765411","pay_code":"152419337920515524205"},
+{"union_order_code":"000021122201824030135555272","pay_code":"152422201205511384140"},
+{"union_order_code":"000021122201824030136025338","pay_code":"152418241447817873548"},
+{"union_order_code":"000021122201824030138453359","pay_code":"152419329451914161552"},
+{"union_order_code":"000021122201824030138657834","pay_code":"152417890259918624744"},
+{"union_order_code":"000021122201824030161581870","pay_code":"152418963573413841347"},
+{"union_order_code":"000021122201824030164543518","pay_code":"152417881133712938623"},
+{"union_order_code":"000021122201824030175450259","pay_code":"152420401396407430455"},
+{"union_order_code":"000021122201824030249881618","pay_code":"152420418205712256157"},
+{"union_order_code":"000021122201824030257983736","pay_code":"152419681459700288265"},
+{"union_order_code":"000021122201824030263549810","pay_code":"152419321095119590219"},
+{"union_order_code":"000021122201824030269109911","pay_code":"152419346197401812211"},
+{"union_order_code":"000021122201824030291147810","pay_code":"152417898546804150369"},
+{"union_order_code":"000021122201824030312031435","pay_code":"152419354263817581707"},
+{"union_order_code":"000021122201824030314795512","pay_code":"152420041653216013294"},
+{"union_order_code":"000021122201824030336454132","pay_code":"152430490375918566899"},
+{"union_order_code":"000021122201824030355562338","pay_code":"152427249662300133898"},
+{"union_order_code":"000021122201824030358737834","pay_code":"152427260866913155668"},
+{"union_order_code":"000021122201824030369191117","pay_code":"152424361859004999924"},
+{"union_order_code":"000021122201824030372474518","pay_code":"152427600942603303936"},
+{"union_order_code":"000021122201824030380656259","pay_code":"152427241145600345380"},
+{"union_order_code":"000021122201824030386672819","pay_code":"152427609219513045308"},
+{"union_order_code":"000021122201824030404222618","pay_code":"152428681755014860140"},
+{"union_order_code":"000021122201824030467223813","pay_code":"152431562030417663024"},
+{"union_order_code":"000021122201824030516584515","pay_code":"152430481940706627005"},
+{"union_order_code":"000021122201824030525093812","pay_code":"152431921140102584124"},
+{"union_order_code":"000021122201824030530818654","pay_code":"152427961846617664437"},
+{"union_order_code":"000021122201824030533022615","pay_code":"152429043533717158835"},
+{"union_order_code":"000021122201824030555763512","pay_code":"152438051681804630129"},
+{"union_order_code":"000021122201824030560066219","pay_code":"152436260608314798361"},
+{"union_order_code":"000021122201824030566793132","pay_code":"152439482062412630322"},
+{"union_order_code":"000021122201824030571264819","pay_code":"152435525484504733865"},
+{"union_order_code":"000021122201824030578963272","pay_code":"152439121148807526412"},
+{"union_order_code":"000021122201824030579438338","pay_code":"152435881614103433281"},
+{"union_order_code":"000021122201824030582403359","pay_code":"152438401355517819234"},
+{"union_order_code":"000021122201824030583207834","pay_code":"152437681956608912435"},
+{"union_order_code":"000021122201824030667068737","pay_code":"152440202244608726322"},
+{"union_order_code":"000021122201824030674871259","pay_code":"152437321235903172680"},
+{"union_order_code":"000021122201824030689226819","pay_code":"152436241209702110046"},
+{"union_order_code":"000021122201824030697965618","pay_code":"152437329987202839837"},
+{"union_order_code":"000021122201824030700949736","pay_code":"152436601633800933332"},
+{"union_order_code":"000021122201824030728667612","pay_code":"152433002298902996585"},
+{"union_order_code":"000021122201824030766914057","pay_code":"152445961051911454664"},
+{"union_order_code":"000021122201824030768344515","pay_code":"152447410222216750855"},
+{"union_order_code":"000021122201824030772655135","pay_code":"152447761673902349438"},
+{"union_order_code":"000021122201824030773605915","pay_code":"152446684453410397497"},
+{"union_order_code":"000021122201824030777366812","pay_code":"152448841188414300834"},
+{"union_order_code":"000021122201824030783059616","pay_code":"152445993606219415682"},
+{"union_order_code":"000021122201824030783316654","pay_code":"152444884182615823028"},
+{"union_order_code":"000021122201824030785974615","pay_code":"152445969879914355665"},
+{"union_order_code":"000021122201824030788701219","pay_code":"152446002770802747102"},
+{"union_order_code":"000021122201824030797579132","pay_code":"152448130504710162368"},
+{"union_order_code":"000021122201824030797747012","pay_code":"152445241493219016397"},
+{"union_order_code":"000021122201824030805378819","pay_code":"152444161412202388947"},
+{"union_order_code":"000021122201824030827336338","pay_code":"152444540974911452286"},
+{"union_order_code":"000021122201824030827923315","pay_code":"152444529513011719232"},
+{"union_order_code":"000021122201824030839928359","pay_code":"152445601484902563468"},
+{"union_order_code":"000021122201824030904860311","pay_code":"152445609916612645142"},
+{"union_order_code":"000021122201824030914753518","pay_code":"152444521142700047945"},
+{"union_order_code":"000021122201824030930942573","pay_code":"152447401238419551062"},
+{"union_order_code":"000021122201824030935197618","pay_code":"152445978692908892819"},
+{"union_order_code":"000021122201824030945839813","pay_code":"152448482099807688069"},
+{"union_order_code":"000021122201824030948383476","pay_code":"152448121936406383555"},
+{"union_order_code":"000021122201824030977783511","pay_code":"152454961359910576261"},
+{"union_order_code":"000021122201824030983600612","pay_code":"152457842268116350238"},
+{"union_order_code":"000021122201824030990926712","pay_code":"152453530044417691460"},
+{"union_order_code":"000021122201824030994835138","pay_code":"152453881227605786805"},
+{"union_order_code":"000021122201824030998187515","pay_code":"152454979013403228527"},
+{"union_order_code":"000021122201824031002003135","pay_code":"152455681842619600604"},
+{"union_order_code":"000021122201824031045979010","pay_code":"152453897903501491369"},
+{"union_order_code":"000021122201824031097523132","pay_code":"152454244639804087472"},
+{"union_order_code":"000021122201824031098100012","pay_code":"152454969970902028647"},
+{"union_order_code":"000021122201824031109073819","pay_code":"152452441601209939067"},
+{"union_order_code":"000021122201824031118830272","pay_code":"152456761169703557176"},
+{"union_order_code":"000021122201824031123199359","pay_code":"152453161382408467540"},
+{"union_order_code":"000021122201824031149271870","pay_code":"152453172507409109997"},
+{"union_order_code":"000021122201824031151721419","pay_code":"152453889474714204492"},
+{"union_order_code":"000021122201824031151835518","pay_code":"152453521020503233728"},
+{"union_order_code":"000021122201824031164991737","pay_code":"152456769138202342119"},
+{"union_order_code":"000021122201824031183796618","pay_code":"152462883929507812503"},
+{"union_order_code":"000021122201824031186714351","pay_code":"152463241319804306814"},
+{"union_order_code":"000021122201824031187781736","pay_code":"152462532561102017484"},
+{"union_order_code":"000021122201824031193267813","pay_code":"152465402091908654437"},
+{"union_order_code":"000021122201824031198480911","pay_code":"152463610227812119477"},
+{"union_order_code":"000021122201824031200930917","pay_code":"152466122092907885641"},
+{"union_order_code":"000021122201824031201501299","pay_code":"152462170072205579431"},
+{"union_order_code":"000021122201824031206693511","pay_code":"152462521249517456839"},
+{"union_order_code":"000021122201824031227205712","pay_code":"152462541185700385933"},
+{"union_order_code":"000021122201824031257804515","pay_code":"152461802018109930818"},
+{"union_order_code":"000021122201824031281735135","pay_code":"152463601869402204096"},
+{"union_order_code":"000021122201824031329094512","pay_code":"152462161593818012966"},
+{"union_order_code":"000021122201824031330199219","pay_code":"152462191118214987083"},
+{"union_order_code":"000021122201824031331096213","pay_code":"152465761896009562721"},
+{"union_order_code":"000021122201824031337087132","pay_code":"152462181866913139690"},
+{"union_order_code":"000021122201824031551058618","pay_code":"152480521648515566890"},
+{"union_order_code":"000021122201824031552739351","pay_code":"152482321272612553560"},
+{"union_order_code":"000021122201824031553779736","pay_code":"152480161576511882117"},
+{"union_order_code":"000021122201824031562768813","pay_code":"152483762169401129510"},
+{"union_order_code":"000021122201824031574137911","pay_code":"152479461346017685010"},
+{"union_order_code":"000021122201824031583957917","pay_code":"152480173073914521592"},
+{"union_order_code":"000021122201824031614854730","pay_code":"152478361982018529461"},
+{"union_order_code":"000021122201824031680405915","pay_code":"152479084325600271789"},
+{"union_order_code":"000021122201824031682745812","pay_code":"152479441201103953571"},
+{"union_order_code":"000021122201824031692075435","pay_code":"152479470284804291598"},
+{"union_order_code":"000021122201824031700047512","pay_code":"152480889799104134863"},
+{"union_order_code":"000021122201824031707821728","pay_code":"152479452605906081981"},
+{"union_order_code":"000021122201824031710320132","pay_code":"152480181356719317422"},
+{"union_order_code":"000021122201824031737999338","pay_code":"152487738411308021085"},
+{"union_order_code":"000021122201824031745179359","pay_code":"152488809666412291538"},
+{"union_order_code":"000021122201824031746231834","pay_code":"152487747297603638875"},
+{"union_order_code":"000021122201824031757728173","pay_code":"152489217671612572030"},
+{"union_order_code":"000021122201824031761796777","pay_code":"152487001587212689492"},
+{"union_order_code":"000021122201824031763314518","pay_code":"152487721065218994348"},
+{"union_order_code":"000021122201824031770591259","pay_code":"152489169524310219969"},
+{"union_order_code":"000021122201824031778674819","pay_code":"152488801244605080322"},
+{"union_order_code":"000021122201824031787330573","pay_code":"152489177944819800653"},
+{"union_order_code":"000021122201824031796391618","pay_code":"152489199000407731577"},
+{"union_order_code":"000021122201824031801114736","pay_code":"152488090010808322863"},
+{"union_order_code":"000021122201824031833371813","pay_code":"152487756352213331593"},
+{"union_order_code":"000021122201824031870526911","pay_code":"152489524155311110787"},
+{"union_order_code":"000021122201824031877672299","pay_code":"152488081571213587294"},
+{"union_order_code":"000021122201824031887305995","pay_code":"152488458578403995458"},
+{"union_order_code":"000021122201824031890209810","pay_code":"152487765799417112833"},
+{"union_order_code":"000021122201824031891085530","pay_code":"152489532997306360014"},
+{"union_order_code":"000021122201824031893894456","pay_code":"152489186445211251214"},
+{"union_order_code":"000021122201824031897496915","pay_code":"152487364361402853824"},
+{"union_order_code":"000021122201824031900303812","pay_code":"152489881220816547438"},
+{"union_order_code":"000021122201824031903422654","pay_code":"152488450371818926639"},
+{"union_order_code":"000021122201824031904316501","pay_code":"152489208258603364023"},
+{"union_order_code":"000021122201824031905266615","pay_code":"152488441602206781741"},
+{"union_order_code":"000021122201824031905754310","pay_code":"152490602037017840244"},
+{"union_order_code":"000021122201824031908281010","pay_code":"152487729909707003689"},
+{"union_order_code":"000021122201824031973875618","pay_code":"152497081837600225037"},
+{"union_order_code":"000021122201824031976008736","pay_code":"152496010187713608907"},
+{"union_order_code":"000021122201824031997022911","pay_code":"152497801732802653582"},
+{"union_order_code":"000021122201824032004527183","pay_code":"152496741332711253844"},
+{"union_order_code":"000021122201824032092988810","pay_code":"152496019379600837604"},
+{"union_order_code":"000021122201824032099118057","pay_code":"152496001239015827343"},
+{"union_order_code":"000021122201824032105623812","pay_code":"152501041212208628115"},
+{"union_order_code":"000021122201824032115193501","pay_code":"152498164060617555442"},
+{"union_order_code":"000021122201824032115747435","pay_code":"152496729850302836305"},
+{"union_order_code":"000021122201824032120354310","pay_code":"152499241880112349639"},
+{"union_order_code":"000021122201824032132047132","pay_code":"152498882363119071201"},
+{"union_order_code":"000021122201824032164687338","pay_code":"152506090005802013731"},
+{"union_order_code":"000021122201824032171675359","pay_code":"152505729753203850319"},
+{"union_order_code":"000021122201824032172630834","pay_code":"152505004515610084349"},
+{"union_order_code":"000021122201824032186413117","pay_code":"152505381593016972938"},
+{"union_order_code":"000021122201824032188198777","pay_code":"152502121593001931629"},
+{"union_order_code":"000021122201824032197035259","pay_code":"152505361339510748275"},
+{"union_order_code":"000021122201824032206218819","pay_code":"152505721283204635047"},
+{"union_order_code":"000021122201824032225465618","pay_code":"152504660863714186189"},
+{"union_order_code":"000021122201824032236272736","pay_code":"152504652400315952805"},
+{"union_order_code":"000021122201824032276769739","pay_code":"152508241587806902745"},
+{"union_order_code":"000021122201824032280386813","pay_code":"152509322126615866484"},
+{"union_order_code":"000021122201824032293417911","pay_code":"152506804132112628003"},
+{"union_order_code":"000021122201824032298789299","pay_code":"152505372711606770214"},
+{"union_order_code":"000021122201824032315712214","pay_code":"152506815886906135077"},
+{"union_order_code":"000021122201824032318535530","pay_code":"152506442158402922996"},
+{"union_order_code":"000021122201824032324465057","pay_code":"152504641137710433395"},
+{"union_order_code":"000021122201824032365068132","pay_code":"152515815181602376843"},
+{"union_order_code":"000021122201824032369321651","pay_code":"152514057924409068754"},
+{"union_order_code":"000021122201824032372922819","pay_code":"152514026990501999974"},
+{"union_order_code":"000021122201824032381518338","pay_code":"152514036347418097430"},
+{"union_order_code":"000021122201824032383728359","pay_code":"152510761416005267055"},
+{"union_order_code":"000021122201824032384262834","pay_code":"152513655389416838122"},
+{"union_order_code":"000021122201824032395843515","pay_code":"152517962439218736105"},
+{"union_order_code":"000021122201824032409795259","pay_code":"152514729607705323780"},
+{"union_order_code":"000021122201824032416462819","pay_code":"152514001314002956001"},
+{"union_order_code":"000021122201824032435579618","pay_code":"152514738269908996921"},
+{"union_order_code":"000021122201824032448719736","pay_code":"152515801750815139016"},
+{"union_order_code":"000021122201824032487220813","pay_code":"152514362077808370607"},
+{"union_order_code":"000021122201824032497595911","pay_code":"152513644088001903669"},
+{"union_order_code":"000021122201824032502811299","pay_code":"152514018585911011117"},
+{"union_order_code":"000021122201824032511563036","pay_code":"152515458096105089668"},
+{"union_order_code":"000021122201824032519823214","pay_code":"152515082508819967681"},
+{"union_order_code":"000021122201824032523053530","pay_code":"152515446785012759668"},
+{"union_order_code":"000021122201824032528677057","pay_code":"152513281118712804413"},
+{"union_order_code":"000021122201824032564435512","pay_code":"152522658500218907369"},
+{"union_order_code":"000021122201824032568055219","pay_code":"152524096008213986032"},
+{"union_order_code":"000021122201824032569248010","pay_code":"152522292594904515318"},
+{"union_order_code":"000021122201824032575137132","pay_code":"152522686098814827135"},
+{"union_order_code":"000021122201824032576572651","pay_code":"152521943982707510120"},
+{"union_order_code":"000021122201824032580691819","pay_code":"152523001784818678794"},
+{"union_order_code":"000021122201824032584730719","pay_code":"152525161685416700393"},
+{"union_order_code":"000021122201824032591585834","pay_code":"152521935519019413782"},
+{"union_order_code":"000021122201824032602933515","pay_code":"152522676771014498731"},
+{"union_order_code":"000021122201824032607921777","pay_code":"152525521774511815201"},
+{"union_order_code":"000021122201824032610373518","pay_code":"152522281217511381515"},
+{"union_order_code":"000021122201824032629180819","pay_code":"152522641216616094766"},
+{"union_order_code":"000021122201824032662655618","pay_code":"152523013242907417098"},
+{"union_order_code":"000021122201824032685112012","pay_code":"152523733017308213741"},
+{"union_order_code":"000021122201824032697751580","pay_code":"152522691779908826862"},
+{"union_order_code":"000021122201824032708001511","pay_code":"152521921183910752110"},
+{"union_order_code":"000021122201824032713829036","pay_code":"152524087027111660257"},
+{"union_order_code":"000021122201824032719215995","pay_code":"152522303877807758154"},
+{"union_order_code":"000021122201824032724658530","pay_code":"152523381144005957876"},
+{"union_order_code":"000021122201824032757868219","pay_code":"152532382266112393918"},
+{"union_order_code":"000021122201824032761406010","pay_code":"152532730046614702484"},
+{"union_order_code":"000021122201824032767798132","pay_code":"152533099682001532190"},
+{"union_order_code":"000021122201824032769435651","pay_code":"152531311678708945002"},
+{"union_order_code":"000021122201824032784347834","pay_code":"152532753984509192314"},
+{"union_order_code":"000021122201824032798386777","pay_code":"152534881594502371454"},
+{"union_order_code":"000021122201824032800284518","pay_code":"152531281248105568334"},
+{"union_order_code":"000021122201824032807450736","pay_code":"152533090758302533074"},
+{"union_order_code":"000021122201824032815559819","pay_code":"152531289884211124637"},
+{"union_order_code":"000021122201824032835945618","pay_code":"152532370077211923774"},
+{"union_order_code":"000021122201824032854788736","pay_code":"152531641726912880312"},
+{"union_order_code":"000021122201824032902489911","pay_code":"152532741586801103865"},
+{"union_order_code":"000021122201824032911419511","pay_code":"152532721355104709747"},
+{"union_order_code":"000021122201824032940914135","pay_code":"152533081935917435047"},
+{"union_order_code":"000021122201824032947316825","pay_code":"152533802602503111436"},
+{"union_order_code":"000021122201824032974125512","pay_code":"152539938651811818816"},
+{"union_order_code":"000021122201824032976068219","pay_code":"152541397012600733490"},
+{"union_order_code":"000021122201824032977193213","pay_code":"152541387239614433841"},
+{"union_order_code":"000021122201824032982776651","pay_code":"152539969863814270591"},
+{"union_order_code":"000021122201824032999859834","pay_code":"152539570548418925757"},
+{"union_order_code":"000021122201824033030782515","pay_code":"152540298010011168075"},
+{"union_order_code":"000021122201824033056510777","pay_code":"152541361662616334625"},
+{"union_order_code":"000021122201824033098634737","pay_code":"152541734910208967138"},
+{"union_order_code":"000021122201824033100627556","pay_code":"152542442211604055651"},
+{"union_order_code":"000021122201824033105600819","pay_code":"152540281492214182733"},
+{"union_order_code":"000021122201824033113608618","pay_code":"152541370962508634927"},
+{"union_order_code":"000021122201824033116539736","pay_code":"152539956452810732748"},
+{"union_order_code":"000021122201824033144069511","pay_code":"152541721200711829301"},
+{"union_order_code":"000021122201824033168565703","pay_code":"152549641552806199821"},
+{"union_order_code":"000021122201824033172909214","pay_code":"152550018809407463055"},
+{"union_order_code":"000021122201824033176720530","pay_code":"152549282350606877688"},
+{"union_order_code":"000021122201824033178146138","pay_code":"152551081390208645575"},
+{"union_order_code":"000021122201824033181588515","pay_code":"152550731539915361585"},
+{"union_order_code":"000021122201824033184678915","pay_code":"152548567583111941465"},
+{"union_order_code":"000021122201824033186450812","pay_code":"152550361403310528252"},
+{"union_order_code":"000021122201824033189904825","pay_code":"152548227830812798305"},
+{"union_order_code":"000021122201824033195335615","pay_code":"152550001638519628255"},
+{"union_order_code":"000021122201824033200373512","pay_code":"152548921751512513748"},
+{"union_order_code":"000021122201824033219106651","pay_code":"152547844684010032082"},
+{"union_order_code":"000021122201824033304418834","pay_code":"152548219098618200685"},
+{"union_order_code":"000021122201824033322338117","pay_code":"152548210549511479482"},
+{"union_order_code":"000021122201824033325159777","pay_code":"152550374711606421107"},
+{"union_order_code":"000021122201824033334878736","pay_code":"152548937460507014845"},
+{"union_order_code":"000021122201824033351677618","pay_code":"152550011298214844732"},
+{"union_order_code":"000021122201824033360336031","pay_code":"152549651135407617098"},
+{"union_order_code":"000021122201824033384316580","pay_code":"152557564133215029806"},
+{"union_order_code":"000021122201824033397027511","pay_code":"152559001371515515520"},
+{"union_order_code":"000021122201824033431314915","pay_code":"152556842431203791472"},
+{"union_order_code":"000021122201824033450087825","pay_code":"152559734164719785806"},
+{"union_order_code":"000021122201824033516114213","pay_code":"152557924734312801651"},
+{"union_order_code":"000021122201824033526310819","pay_code":"152559721883813256488"},
+{"union_order_code":"000021122201824033564146518","pay_code":"152557201357619428014"},
+{"union_order_code":"000021122201824033631384511","pay_code":"152567641342300258034"},
+{"union_order_code":"000021122201824033805440736","pay_code":"152574850949907795337"},
+{"union_order_code":"000021122201824035356107618","pay_code":"152659120005719170051"},
+{"union_order_code":"000021122201824035358303351","pay_code":"152659087035819678129"},
+{"union_order_code":"000021122201824035461947214","pay_code":"152659153913603220994"},
+{"union_order_code":"000021122201824035467046138","pay_code":"152659080999715128252"},
+{"union_order_code":"000021122201824035471518732","pay_code":"152659148196402766236"},
+{"union_order_code":"000021122201824035477039915","pay_code":"152659134449909254674"},
+{"union_order_code":"000021122201824035498565512","pay_code":"152659107780010855266"},
+{"union_order_code":"000021122201824035508073132","pay_code":"152659142342706943479"},
+{"union_order_code":"000021122201824035515262719","pay_code":"152659102074808969021"},
+{"union_order_code":"000021122201824035517441338","pay_code":"152659113914906249488"},
+{"union_order_code":"000021122201824035517710315","pay_code":"152659092586019481450"}
+
+]';
+        foreach (json_decode($str,true) as $value) {
+            $data = $this->originalDataMake();
+            $data['serial_no'] = $value['pay_code'];
+            $data['service_id'] = '02';
+            $data['apply_content'] = [
+                "proposalNo" => $value['union_order_code'],   //投保单号
+                "tradeId" =>$value['pay_code'],    //支付订单号
+                "outTradeId" => $value['pay_code'], //第三方支付单号
+                "payAccount" => "0000",  //支付账号
+                "payTime" => date('Y-m-d H:i:s', time()),    //支付时间
+                "payMoney" => '2',   //支付金额
+                "payWayId" => "79", //支付方式 微信支付
+                "fromId" => "64090", //渠道代码
+                "comboId" => '1122A01G01'    //方案代码
+            ];
+            dump($data);
+            $sign = md5(self::INS_ENCODE_KEY_PRODUCT . json_encode($data['apply_content'])); //中文转译问题JSON_UNESCAPED_UNICODE** 泰康接口不用考虑中文转码问题
+            $data['sign'] = $sign;
+            //请求
+            dump($data);
+            dump(json_encode($data));
+            $response = Curl::to(self::API_INSURE_PRODUCT)
+                ->returnResponseObject()
+                ->withData($data)
+                ->withHeader("Content-Type: application/json;charset=UTF-8")
+                ->asJson(true)
+                ->withTimeout(60)
+                ->post();
+            dd($response);die;
+            $return = $response->content;
+            LogHelper::logSuccess($return, 'tk', 'issue_return_data');
+            if ($return['result_code'] != 0) {
+                return ['data' => $return['result_msg'], 'code' => 400];
+            }
+            $result = $return['result_content'];
+            $result['union_order_code'] = $value['union_order_code'];
+            return $this->handleIssue($result);
+        }
+    }
+}

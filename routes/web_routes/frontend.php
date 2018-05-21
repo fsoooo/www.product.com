@@ -12,6 +12,9 @@ Route::group(['prefix' => '/', 'namespace'=>'FrontendControllers'],function () {
         Route::post('uploadImage','QuestionController@uploadImage');
     });
     Route::get('/mongo', 'MongodbController@index');
-
+	//Route::get('issue_tk', 'IssueTkController@issue');
+	//Route::get('issue_tk_test/{union_order_code}', 'IssueTkController@issueTk');
+	//Route::get('issue_tk_test', 'IssueTkController@issueTkTest');
+	Route::get('do_issue_tk', 'IssueTkController@doTkissue');
 
 });
