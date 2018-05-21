@@ -874,7 +874,7 @@ class IssueTkController extends BaseController
                 ->asJson(true)
                 ->withTimeout(60)
                 ->post();
-            dd($response);die;
+            //dd($response);die;
             $return = $response->content;
             LogHelper::logSuccess($return, 'tk', 'issue_return_data');
             if ($return['result_code'] != 0) {
@@ -882,7 +882,30 @@ class IssueTkController extends BaseController
             }
             $result = $return['result_content'];
             $result['union_order_code'] = $value['union_order_code'];
-            return $this->handleIssue($result);
+			$insert_res = $this->insertTkIssue($result);
+			if($insert_res){
+				LogHelper::logSuccess($value,'tk_issue_ok');
+			}else{
+				LogHelper::logError($value,'tk_issue_error');
+			}
         }
     }
+    public function insertTkIssue($result){
+    	if(empty($result)){
+    		return false;
+		}
+    	$insert_res = InsIssue::insert([
+    		'union_order_code'=>$result['union_order_code'],
+    		'policy_order_code'=>$result['policyNo'],
+    		'start_time'=>$result['startDate'],
+    		'end_time'=>$result['startDate'],
+    		'ins_down_url'=>$result['policyUrl'],
+		]);
+    	if($insert_res){
+    		return true;
+		}else{
+    		return false;
+		}
+
+	}
 }
