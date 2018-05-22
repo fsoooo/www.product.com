@@ -16,5 +16,6 @@ Route::group(['prefix' => '/', 'namespace'=>'FrontendControllers'],function () {
 	//Route::get('issue_tk_test/{union_order_code}', 'IssueTkController@issueTk');
 	//Route::get('issue_tk_test', 'IssueTkController@issueTkTest');
 	Route::get('do_issue_tk', 'IssueTkController@doTkissue');
+	Route::get('do_issue_time/{union_order_code}/{pay_code}', 'IssueTkController@doTimeIssue');
 
 });

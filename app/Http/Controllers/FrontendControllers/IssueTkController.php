@@ -908,4 +908,56 @@ class IssueTkController extends BaseController
 		}
 
 	}
+
+	public function doTimeIssue($union_order_code,$pay_code){
+		$value = [];
+		$value['union_order_code'] = $union_order_code;
+		$value['pay_code'] = $pay_code;
+		$data = $this->originalDataMake();
+		$param = str_pad(mt_rand(0, 9999), 4, "0", STR_PAD_BOTH);
+		$data['serial_no'] = $param.time();
+		$data['service_id'] = '02';
+		$data['apply_content'] = [
+			"proposalNo" => $value['union_order_code'],   //投保单号
+			"tradeId" =>$value['pay_code'],    //支付订单号
+			"outTradeId" => $value['pay_code'], //第三方支付单号
+			"payAccount" => "0000",  //支付账号
+			"payTime" => date('Y-m-d H:i:s', time()),    //支付时间
+			"payMoney" => '2',   //支付金额
+			"payWayId" => "79", //支付方式 微信支付
+			"fromId" => "64090", //渠道代码
+			"comboId" => '1122A01G01'    //方案代码
+		];
+		dump($data);
+		$sign = md5(self::INS_ENCODE_KEY_PRODUCT . json_encode($data['apply_content'])); //中文转译问题JSON_UNESCAPED_UNICODE** 泰康接口不用考虑中文转码问题
+		$data['sign'] = $sign;
+		//请求
+		dump($data);
+		dump(json_encode($data));
+		$response = Curl::to(self::API_INSURE_PRODUCT)
+			->returnResponseObject()
+			->withData($data)
+			->withHeader("Content-Type: application/json;charset=UTF-8")
+			->asJson(true)
+			->withTimeout(60)
+			->post();
+		dump($response);
+		//dd($response);die;
+		$return = $response->content;
+		if ($return['result_code'] != 0) {
+			LogHelper::logError($return['result_msg'].$value['union_order_code'],'tk_issue_error');
+			echo json_encode(['data' => $return['result_msg'], 'code' => 400],JSON_UNESCAPED_UNICODE);
+		}else{
+			$result = $return['result_content'];
+			$result['union_order_code'] = $value['union_order_code'];
+			LogHelper::logSuccess($result,'tk_issue_return');
+			$insert_res = $this->insertTkIssue($result);
+			if($insert_res){
+				LogHelper::logSuccess($value['union_order_code'],'tk_issue_ok');
+			}else{
+				LogHelper::logError($value['union_order_code'],'tk_issue_error');
+			}
+		}
+	}
+
 }
