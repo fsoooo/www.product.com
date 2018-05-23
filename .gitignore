@@ -14,3 +14,5 @@ npm-debug.log
 .env
 /app/Http/Middleware/CheckApiSign.php
 composer.lock
+*.swp
+
