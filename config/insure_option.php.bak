@@ -1,0 +1,9 @@
+<?php return [
+    "tariff" => "费率",
+    "clause_id" => '关联条款',
+    "age" => "年龄",
+    "period" => "缴费期间",
+    "sex" => "性别",
+    "by_stages" => "分期方式",
+    "shebao" => "有无社保",
+];

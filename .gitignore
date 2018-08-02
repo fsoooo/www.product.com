@@ -1,0 +1,16 @@
+/node_modules
+/public/hot
+/public/storage
+/public/upload
+/public/uploads
+/storage/*.key
+/log
+/vendor
+/.idea
+/.vagrant
+Homestead.json
+Homestead.yaml
+npm-debug.log
+.env
+/app/Http/Middleware/CheckApiSign.php
+composer.lock

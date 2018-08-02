@@ -1,0 +1,68 @@
+@extends('backend.layout.base')
+@section('css')
+
+@endsection
+@section('content')
+    <div id="content-wrapper">
+        <div class="row">
+            <div class="col-lg-10">
+                <div class="main-box" style="min-height:600px">
+                    <header class="main-box-header clearfix">
+                        <h2>分类添加</h2>
+                    </header>
+                    @include('backend.layout.alert_info')
+                    <div class="main-box-body clearfix">
+                        <form role="form" id='select_user' action="{{asset('backend/product/category/add')}}" method="post">
+                            {{ csrf_field() }}
+                            <div class="form-group">
+                                <label>选择父级分类</label>
+                                <select id="category_select" class="form-control" name="pid">
+                                    <option value="0" selected>--作为主分类--</option>
+                                    @foreach($category as $k => $v)
+                                        <option value="{{$v->id}}" type="{{$v->type}}"><?php echo str_repeat('|----' , $v['sort']) . $v['name'] ?></option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div id="category_type" class="form-group">
+                                <label>选择分类类型</label>
+                                <select id="type_select" class="form-control">
+                                    <option value="0" disabled>--选择类型--</option>
+                                    <option value="product">产品</option>
+                                    <option value="duty">责任</option>
+                                </select>
+                            </div>
+
+                            <input type="hidden" name="type" id="type">
+
+                            <div class="form-group">
+                                <label for="exampleInputPassword1">分类名称</label>
+                                <input class="form-control" name="name" placeholder="分类名称" type="text">
+                            </div>
+                            <label for="" style="margin-left: 20px;">
+                                <button type="submit" id="attach_submit" class="btn btn-success">提交</button>
+                            </label>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@stop
+@section('foot-js')
+    <script type="text/javascript" charset="utf-8">
+        $("#category_select").change(function(){
+            $("#category_type").addClass('hide');
+            $('#type').val('');
+            if($(this).val() == 0){
+                $("#category_type").removeClass('hide');
+            }
+        });
+
+        $("#type_select").change(function(){
+            $("#type").val($(this).val());
+        });
+
+    </script>
+@stop
+
