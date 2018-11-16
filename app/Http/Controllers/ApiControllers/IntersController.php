@@ -179,16 +179,7 @@ class IntersController extends BaseController{
             }
 //        }
     }
-    /**
-     * 邮件发送
-     *
-     * @param $to_email|string    邮件接收地址
-     * @param $email_data|string  邮件内容
-     * @param $email_type|string  邮件类型
-     *
-     * @return $return_data|json
-     *
-     */    public function doEmail($to_email,$email_data,$email_type=null){
+    public function doEmail($to_email,$email_data,$email_type=null){
         //发送邮件
         $to_email = json_decode($to_email,true);
         if(empty($to_email)){
@@ -205,36 +196,6 @@ class IntersController extends BaseController{
         $rerurn_data = json_encode(['status' => '200', 'message' => '邮件发送成功！'],JSON_UNESCAPED_UNICODE);
         return $rerurn_data;
     }
-
-//            返回码说明
-//            000000    ok
-//            100000    金额不为整数
-//            100001    余额不足
-//            100002    数字非法
-//            100003    不允许有空值
-//            100004    枚举类型取值错误
-//            100005    访问IP不合法
-//            100006    手机号不合法
-//            100015    号码不合法
-//            100500    HTTP状态码不等于200
-//            100007    查无数据
-//            100008    手机号码为空
-//            100009    手机号为受保护的号码
-//            100010    登录邮箱或手机号为空
-//            100011    邮箱不合法
-//            100012    密码不能为空
-//            100013    没有测试子账号
-//            100014    金额过大,不要超过12位数字
-//            100016    余额被冻结
-//            100017    余额已注销
-//            100018    通话时长需大于60秒
-//            100699    系统内部错误
-//            100019    应用餘額不足
-//            100020    字符长度太长
-//            100104    callId不能为空
-//            100105    日期格式错误
-//            100108    取消回拨失败
-    //短信订单
     public  function paySms(){
         $biz_content = $this->request->get('biz_content');
         $biz_content  = json_decode($this->sign_help->base64url_decode(strrev($biz_content)), true);
@@ -256,7 +217,7 @@ class IntersController extends BaseController{
                 break;
         }
     }
-   public function sendEmails()
+    public function sendEmails()
         {
             $biz_content = $this->request->get('biz_content');
             $biz_content  = json_decode($this->sign_help->base64url_decode(strrev($biz_content)), true);
@@ -299,7 +260,6 @@ class IntersController extends BaseController{
                 return (['status' => 1, 'message' => '邮件发送失败！']);
             }
         }
-
     public function sendEmailFiles(){
         $biz_content = $this->request->get('biz_content');
         $biz_content  = json_decode($this->sign_help->base64url_decode(strrev($biz_content)), true);
@@ -342,9 +302,6 @@ class IntersController extends BaseController{
             return $removed_files;
         }
     }
-
-
-
     public function saveEmails()
     {
         $biz_content = $this->request->get('biz_content');
@@ -371,8 +328,6 @@ class IntersController extends BaseController{
                 return (['status' => 1, 'message' => '邮件保存失败！']);
             }
     }
-
-
     public  function  getOnlines(){
         $biz_content = $this->request->get('biz_content');
         $biz_content  = json_decode($this->sign_help->base64url_decode(strrev($biz_content)), true);
@@ -389,5 +344,53 @@ class IntersController extends BaseController{
             return response()->json(['status'=>'1','data' => '']);
         }
     }
+
+	/**
+	 * 测试处理费率表execl
+	 *
+	 */
+	public function testExcel()
+	{
+		set_time_limit(0);//永不超时
+		$a = ExcelHelper::excelToArray("upload/tariff/hg_tariff.xlsx");
+		$title = $a->first()->toArray();
+		$tariff = $a->toArray();
+		unset($tariff[0]);
+		$insert_data = [];
+		foreach($tariff as $k => $v){
+			foreach($v as $vk => $vv){
+				if(!empty($vv)){
+					$insert_data[$k][$title[$vk]] = str_replace(array("\r\n", "\r", "\n"),  '', $vv);
+				}
+			}
+		}
+		foreach ($insert_data as $value){
+			DB::table('hg_tariff')->insert($value);
+		}
+
+	}
+
+	/**
+	 * 测试处理execl
+	 * @param $path  文件路径
+	 * "upload/tariff/hg_tariff.xlsx"
+	 */
+	public function doExcel($path)
+	{
+		set_time_limit(0);//永不超时
+		$a = ExcelHelper::excelToArray($path);
+		$title = $a->first()->toArray();
+		$content = $a->toArray();
+		unset($content[0]);
+		$return_data = [];
+		foreach($content as $k => $v){
+			foreach($v as $vk => $vv){
+				if(!empty($vv)){
+					$return_data[$k][$title[$vk]] = str_replace(array("\r\n", "\r", "\n"),  '', $vv);
+				}
+			}
+		}
+		return $return_data;
+	}
 
 }

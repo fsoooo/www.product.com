@@ -4,9 +4,12 @@ namespace App\Http\Controllers\BackendControllers;
 
 use App\Models\Company;
 use App\Models\Clause;
-use App\Models\ApiFrom;
 use App\Models\Category;
 use App\Models\Insurance;
+use App\Models\ApiFrom;
+use App\Models\InsuranceApiInfo;
+use App\Models\InsuranceHealth;
+
 use App\Models\InsuranceAttributeModule;
 use App\Models\RestrictGene;
 use App\Repositories\ApiFromRepository;
@@ -18,8 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Helper\RsaSignHelp;
 use App\Helper\UploadFileHelper;
-use App\Models\InsuranceApiInfo;
-use App\Models\InsuranceHealth;
+
 
 class InsuranceController extends BaseController
 {
